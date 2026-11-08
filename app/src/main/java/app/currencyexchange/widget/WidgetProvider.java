@@ -78,7 +78,7 @@ public class WidgetProvider extends AppWidgetProvider {
         if (ids.length == 0) return;
         PendingIntent open = PendingIntent.getActivity(ctx, 0, new Intent(ctx, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        int max = CurrencyView.LAYOUTS.length;
+        int max = Math.min(CurrencyView.LAYOUTS.length, Store.count(ctx));
         for (int id : ids) {
             RemoteViews rv;
             if (Build.VERSION.SDK_INT >= 31) {

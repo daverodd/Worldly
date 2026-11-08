@@ -20,6 +20,10 @@ final class Store {
 
     // ---- settings ----
     static String city(Context c, int i) { return sp(c).getString("city" + i, DEF_CITIES[i]); }
+    /** How many currency rows are configured (4 by default, up to 6). The widget shows as many as fit. */
+    static int count(Context c) { return Math.max(1, Math.min(DEF_FROM.length, sp(c).getInt("fxCount", 4))); }
+    static void setCount(Context c, int n) { sp(c).edit().putInt("fxCount", Math.max(1, Math.min(DEF_FROM.length, n))).apply(); }
+
     static String from(Context c, int i) { return sp(c).getString("fx" + i, DEF_FROM[i]); }
     static String to(Context c) { return sp(c).getString("to", "COP"); }
     /** Visa fee as plain text, never with a trailing ".0" ("2", not "2.0"). */

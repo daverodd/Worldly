@@ -101,8 +101,10 @@ public class MainActivity extends Activity {
 
         // ---- currency rows: pick from a list ----
         LinearLayout rates = card(col, "CURRENCY ROWS");
+        final LinearLayout[] rateRows = new LinearLayout[3];
         for (int i = 0; i < 6; i += 2) {
             LinearLayout row = hbox();
+            rateRows[i / 2] = row;
             for (int j = 0; j < 2; j++) {
                 final int idx = i + j;
                 fromBtn[idx] = picker(currencyLabel(Store.from(this, idx)), v -> pickCurrency("Currency " + (idx + 1), code -> {
@@ -114,6 +116,20 @@ public class MainActivity extends Activity {
             }
             rates.addView(row, matchWrap(i == 0 ? 0 : 8));
         }
+        final TextView[] addBtn = new TextView[1];
+        final Runnable showRows = () -> {
+            int n = Store.count(this);
+            for (int i = 0; i < 6; i++) fromBtn[i].setVisibility(i < n ? View.VISIBLE : View.INVISIBLE);
+            for (int r = 0; r < 3; r++) rateRows[r].setVisibility(r * 2 < n ? View.VISIBLE : View.GONE);
+            addBtn[0].setVisibility(n < 6 ? View.VISIBLE : View.GONE);
+        };
+        addBtn[0] = secondaryButton("+  Add currency (up to 6)", v -> {
+            Store.setCount(this, Store.count(this) + 1);
+            refreshNow("Updating rates…");
+            showRows.run();
+        });
+        rates.addView(addBtn[0], matchWrap(8));
+        showRows.run();
         LinearLayout conv = hbox();
         toBtn = picker(currencyLabel(Store.to(this)), v -> pickCurrency("Convert to", code -> {
             Store.sp(this).edit().putString("to", code).apply();
