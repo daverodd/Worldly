@@ -32,13 +32,17 @@ import java.util.Locale;
 final class CalendarRenderer {
     private CalendarRenderer() {}
 
-    /** Height of the content in layout units when it shows header + week row + one event row. */
-    private static final float NEED_UNITS = 177f;
+    /** Fixed vertical parts, in layout units: top block above the first event row, one row, gap, bottom padding. */
+    private static final float TOP_UNITS = 115f, ROW_UNITS = 38f, GAP_UNITS = 6f, BOTTOM_UNITS = 8f;
     /** dp of the "+" tap zone; must match widget_calendar.xml. */
     static final float ADD_ZONE_DP = 56f;
 
-    /** One layout unit in pixels (about 0.66 dp). */
-    static float unit(Context ctx) { return ctx.getResources().getDisplayMetrics().density * 0.66f; }
+    private static float need(int rows) {
+        return TOP_UNITS + BOTTOM_UNITS + rows * ROW_UNITS + Math.max(0, rows - 1) * GAP_UNITS;
+    }
+
+    /** One layout unit in pixels (about 0.74 dp). */
+    static float unit(Context ctx) { return ctx.getResources().getDisplayMetrics().density * 0.74f; }
 
     /** Radius the launcher clips widgets with (system value on Android 12+). */
     private static float clipRadius(Context ctx) {
@@ -54,10 +58,31 @@ final class CalendarRenderer {
     static Bitmap render(Context ctx, int w, int h, List<CalendarData.Event> events, boolean allowed) {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
-        float u = Math.min(unit(ctx), h / NEED_UNITS);
+        float density = ctx.getResources().getDisplayMetrics().density;
+        float base = unit(ctx);
+        boolean hasEvents = allowed && !events.isEmpty();
+        int want = hasEvents ? events.size() : 1;
+
+        // inset so a corner of radius r sits fully inside the launcher's clip circle (same radius everywhere)
+        float inset = Math.max(3f * density, 0.293f * Math.max(0, clipRadius(ctx) - 14f * base));
+        float availH = h - 2 * inset;
+
+        // Pick the size: all events fit -> grow a little to use the space; too many -> keep the size and show
+        // as many as fit; not even one -> shrink to fit one.
+        int fit = (int) Math.floor((availH / base - TOP_UNITS - BOTTOM_UNITS + GAP_UNITS) / (ROW_UNITS + GAP_UNITS));
+        float u;
+        int rows;
+        if (fit >= want) {
+            rows = want;
+            u = Math.min(base * 1.3f, availH / need(rows));
+        } else if (fit >= 1) {
+            rows = fit;
+            u = base;
+        } else {
+            rows = 1;
+            u = availH / need(1);
+        }
         float r = 14f * u;
-        // inset so a corner of radius r sits fully inside the launcher's clip circle of radius R
-        float inset = Math.max(3f * ctx.getResources().getDisplayMetrics().density, 0.293f * Math.max(0, clipRadius(ctx) - r));
         RectF box = new RectF(inset, inset, w - inset, h - inset);
 
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -76,38 +101,36 @@ final class CalendarRenderer {
         float lw = line.getStrokeWidth() / 2f;
         c.drawRoundRect(new RectF(box.left + lw, box.top + lw, box.right - lw, box.bottom - lw), r, r, line);
 
-        float px = 14f * u;                       // inner side padding
-        float left = box.left + px, right = box.right - px;
+        float left = box.left + 14f * u, right = box.right - 14f * u;
         float y = box.top + 10f * u;
 
         // ---- header: big day number, month + "Today, weekday", plus button
         p.setTextAlign(Paint.Align.LEFT);
         p.setColor(Theme.TEXT);
-        p.setTextSize(42f * u);
+        p.setTextSize(46f * u);
         String day = String.valueOf(today.getDayOfMonth());
-        c.drawText(day, left, y + 36f * u, p);
-        float dayW = p.measureText(day);
-        float tx = left + dayW + 12f * u;
-        p.setTextSize(17f * u);
-        c.drawText(today.format(DateTimeFormatter.ofPattern("MMMM", loc)), tx, y + 18f * u, p);
+        c.drawText(day, left, y + 37f * u, p);
+        float tx = left + p.measureText(day) + 12f * u;
+        p.setTextSize(19f * u);
+        c.drawText(today.format(DateTimeFormatter.ofPattern("MMMM", loc)), tx, y + 19f * u, p);
         p.setColor(Theme.MUTED);
-        p.setTextSize(13f * u);
+        p.setTextSize(14.5f * u);
         int week = today.get(WeekFields.of(DayOfWeek.SUNDAY, 1).weekOfYear());
-        c.drawText("Today, " + today.format(DateTimeFormatter.ofPattern("EEEE", loc)) + "  \u00B7  Week " + week, tx, y + 36f * u, p);
+        c.drawText("Today, " + today.format(DateTimeFormatter.ofPattern("EEEE", loc)) + "  \u00B7  Week " + week, tx, y + 38f * u, p);
 
-        float bd = 28f * u; // plus button diameter
-        float bcx = right - bd / 2f, bcy = y + 20f * u;
+        float bd = 34f * u; // plus button diameter
+        float bcx = right - bd / 2f, bcy = y + 21f * u;
         Paint bp = new Paint(Paint.ANTI_ALIAS_FLAG);
         bp.setStyle(Paint.Style.STROKE);
-        bp.setStrokeWidth(Math.max(1f, 1.2f * u));
+        bp.setStrokeWidth(Math.max(1f, 1.3f * u));
         bp.setColor(Theme.BORDER);
         c.drawCircle(bcx, bcy, bd / 2f, bp);
-        bp.setColor(Theme.TEXT_SOFT);
-        bp.setStrokeWidth(1.8f * u);
+        bp.setColor(Theme.TEXT);
+        bp.setStrokeWidth(2.2f * u);
         bp.setStrokeCap(Paint.Cap.ROUND);
-        c.drawLine(bcx - 6f * u, bcy, bcx + 6f * u, bcy, bp);
-        c.drawLine(bcx, bcy - 6f * u, bcx, bcy + 6f * u, bp);
-        y = box.top + 10f * u + 46f * u + 8f * u;
+        c.drawLine(bcx - 8f * u, bcy, bcx + 8f * u, bcy, bp);
+        c.drawLine(bcx, bcy - 8f * u, bcx, bcy + 8f * u, bp);
+        y = box.top + (10f + 44f + 6f) * u;
 
         // ---- week row (Sunday first, as in the preset)
         LocalDate sunday = today.minusDays(today.getDayOfWeek().getValue() % 7);
@@ -119,41 +142,41 @@ final class CalendarRenderer {
             float cx = left + colW * (i + 0.5f);
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(isToday ? Theme.AMBER_LIGHT : Theme.MUTED);
-            p.setTextSize(11f * u);
-            c.drawText(d.format(dn).toUpperCase(loc), cx, y + 11f * u, p);
-            float cy = y + 12f * u + 6f * u + 13f * u;
+            p.setTextSize(12.5f * u);
+            c.drawText(d.format(dn).toUpperCase(loc), cx, y + 12f * u, p);
+            float cy = y + 14f * u + 14f * u;
             if (isToday) {
-                RectF circle = new RectF(cx - 13f * u, cy - 13f * u, cx + 13f * u, cy + 13f * u);
+                RectF circle = new RectF(cx - 14f * u, cy - 14f * u, cx + 14f * u, cy + 14f * u);
                 p.setShader(new LinearGradient(0, circle.top, 0, circle.bottom, Theme.AMBER, Theme.AMBER_DEEP, Shader.TileMode.CLAMP));
                 c.drawOval(circle, p);
                 p.setShader(null);
             }
             p.setColor(isToday ? 0xFFFFFFFF : Theme.TEXT);
-            p.setTextSize(15f * u);
-            c.drawText(String.valueOf(d.getDayOfMonth()), cx, cy + 5.5f * u, p);
+            p.setTextSize(17f * u);
+            c.drawText(String.valueOf(d.getDayOfMonth()), cx, cy + 6f * u, p);
         }
-        y += 46f * u + 8f * u;
+        y += 42f * u + 6f * u;
 
         // ---- divider
         Paint dv = new Paint();
         dv.setColor(Theme.BORDER);
         c.drawRect(left, y, right, y + Math.max(1f, u), dv);
-        y += 8f * u;
+        y += 7f * u;
 
         // ---- events
         p.setTextAlign(Paint.Align.LEFT);
-        float rowH = 40f * u, gap = 6f * u;
-        float bottom = box.bottom - 8f * u;
-        if (!allowed || events.isEmpty()) {
+        if (!hasEvents) {
             p.setColor(Theme.TEXT);
-            p.setTextSize(16f * u);
-            c.drawText(allowed ? "No upcoming events" : "Calendar access needed", left, y + 17f * u, p);
+            p.setTextSize(18f * u);
+            c.drawText(allowed ? "No upcoming events" : "Calendar access needed", left, y + 18f * u, p);
             p.setColor(Theme.MUTED);
-            p.setTextSize(13f * u);
-            c.drawText(allowed ? "Nothing in the next 120 days" : "Tap to open settings", left, y + 36f * u, p);
+            p.setTextSize(14f * u);
+            c.drawText(allowed ? "Nothing in the next 120 days" : "Tap to open settings", left, y + 38f * u, p);
             return bmp;
         }
-        int rows = (int) Math.max(0, Math.min(events.size(), Math.floor((bottom - y + gap) / (rowH + gap))));
+        float rowH = ROW_UNITS * u;
+        float spare = availH - need(rows) * u;             // leftover height: spread between the rows
+        float gap = GAP_UNITS * u + (rows > 1 ? Math.min(spare / (rows - 1), 10f * u) : 0f);
         long now = System.currentTimeMillis();
         DateTimeFormatter tf = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(loc);
         DateTimeFormatter df = DateTimeFormatter.ofPattern("EEE d MMM", loc);
@@ -163,10 +186,9 @@ final class CalendarRenderer {
             int col = ev.color != 0 ? (0xFF000000 | ev.color) : Theme.AMBER;
             Paint bar = new Paint(Paint.ANTI_ALIAS_FLAG);
             bar.setColor(col);
-            c.drawRoundRect(new RectF(left, y + 3f * u, left + 3.5f * u, y + rowH - 3f * u), 2f * u, 2f * u, bar);
-            float x = left + 12f * u;
+            c.drawRoundRect(new RectF(left, y + 2f * u, left + 4f * u, y + rowH - 2f * u), 2f * u, 2f * u, bar);
+            float x = left + 13f * u;
 
-            // time line
             String when;
             if (ev.allDay) when = "All day";
             else {
@@ -175,7 +197,7 @@ final class CalendarRenderer {
             }
             if (!ev.date.equals(today)) when = ev.date.format(df) + "  \u00B7  " + when;
             p.setColor(Theme.MUTED);
-            p.setTextSize(12f * u);
+            p.setTextSize(13.5f * u);
             c.drawText(when, x, y + 14f * u, p);
             if (!ev.allDay) {
                 long mins = (ev.begin - now + 59_999L) / 60_000L;
@@ -189,18 +211,17 @@ final class CalendarRenderer {
                     p.setTextSkewX(0f);
                 }
             }
-            // title
             p.setColor(Theme.TEXT);
-            p.setTextSize(17f * u);
+            p.setTextSize(19f * u);
             String t = android.text.TextUtils.ellipsize(ev.title, new android.text.TextPaint(p), right - x,
                     android.text.TextUtils.TruncateAt.END).toString();
             c.drawText(t, x, y + 34f * u, p);
             y += rowH + gap;
         }
-        if (events.size() > rows && rows > 0) {
+        if (events.size() > rows) {
             p.setTextAlign(Paint.Align.RIGHT);
             p.setColor(Theme.DIM);
-            p.setTextSize(11f * u);
+            p.setTextSize(12f * u);
             c.drawText("+" + (events.size() - rows) + " more", right, box.bottom - 4f * u, p);
         }
         return bmp;

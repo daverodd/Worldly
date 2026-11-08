@@ -4,13 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- The picture is drawn at the widget's own size, so it is stretched 1:1 and the tap zones line up with it. -->
+    <!-- The picture is drawn at the widget's own size, so it is shown 1:1; fitStart means it can never be stretched out of proportion. -->
     <ImageView
         android:id="@+id/img"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@string/cal_name"
-        android:scaleType="fitXY" />
+        android:scaleType="fitStart" />
 
     <ImageView
         android:id="@+id/open_all"
