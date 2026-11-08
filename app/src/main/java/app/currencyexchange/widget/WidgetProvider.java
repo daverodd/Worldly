@@ -56,15 +56,20 @@ public class WidgetProvider extends AppWidgetProvider {
     }
 
     /** Redraw from cache, queue a network refresh if stale, and arm the next per-minute redraw. */
-    private static void tick(Context ctx) {
+    /** Called when the app opens: (re)starts the per-minute alarm chain right away. */
+    static void kick(Context ctx) { tick(ctx, "app"); }
+
+    private static void tick(Context ctx) { tick(ctx, "alarm"); }
+
+    private static void tick(Context ctx, String who) {
         if (widgetIds(ctx).length == 0) return;
         // Arm the next minute FIRST so a failure while drawing can never break the chain.
         try { scheduleNextTick(ctx); } catch (Exception ignored) { }
         try {
             updateAll(ctx);
-            Store.diag(ctx, "clockOk", System.currentTimeMillis(), "alarm", null);
+            Store.diag(ctx, "clockOk", System.currentTimeMillis(), who, null);
         } catch (Throwable t) {
-            Store.diag(ctx, "clockErr", System.currentTimeMillis(), "alarm", t.getClass().getSimpleName() + ": " + t.getMessage());
+            Store.diag(ctx, "clockErr", System.currentTimeMillis(), who, t.getClass().getSimpleName() + ": " + t.getMessage());
         }
         LiveService.ensure(ctx);
         try {
@@ -119,15 +124,20 @@ public class WidgetProvider extends AppWidgetProvider {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         long next = (System.currentTimeMillis() / 60_000L + 1) * 60_000L + 500L; // just after the minute turns
         PendingIntent pi = tickIntent(ctx);
+        String how;
         try {
             if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) {
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC, next, pi); // on the dot, even in battery saver
+                how = "exact";
             } else {
                 am.setAndAllowWhileIdle(AlarmManager.RTC, next, pi);
+                how = "inexact (exact alarms not allowed)";
             }
         } catch (SecurityException e) {
             am.setAndAllowWhileIdle(AlarmManager.RTC, next, pi);
+            how = "inexact (" + e.getMessage() + ")";
         }
+        Store.diag(ctx, "clockNext", next, how, null);
     }
 
     private static void ensurePeriodicJob(Context ctx) {

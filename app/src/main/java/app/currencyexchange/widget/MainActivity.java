@@ -267,7 +267,30 @@ public class MainActivity extends Activity {
         }
         CalendarWidgetProvider.updateAll(app);
         LiveService.ensure(app); // the app is in front, so Android lets the service start
+        WidgetProvider.kick(app); // (re)start the per-minute clock alarms
+        statusTicker.run();
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ui.removeCallbacks(statusTicker);
+    }
+
+    private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+    /** Keeps the Status card current while the app is open, so you can watch the clock updates arrive. */
+    private final Runnable statusTicker = new Runnable() {
+        @Override
+        public void run() {
+            ui.removeCallbacks(this);
+            if (statusBox != null && banner != null) {
+                int v = banner.getVisibility();
+                updateStatus();
+                banner.setVisibility(v); // a running "Updating…" message stays
+            }
+            ui.postDelayed(this, 5000);
+        }
+    };
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
@@ -355,8 +378,10 @@ public class MainActivity extends Activity {
             statusRow("Clock updates", false, "Failed at " + hms.format(new Date(bad)) + " (" + sp.getString("clockErrWho", "")
                     + "): " + sp.getString("clockErrMsg", ""));
         } else {
+            long nx = sp.getLong("clockNextAt", 0);
+            String next = nx == 0 ? "" : " · next " + hms.format(new Date(nx)) + " (" + sp.getString("clockNextWho", "") + ")";
             statusRow("Clock updates", ok > 0 && System.currentTimeMillis() - ok < 3 * 60_000L,
-                    ok == 0 ? "No automatic update yet" : "Last automatic update " + hms.format(new Date(ok)) + " (" + sp.getString("clockOkWho", "") + ")");
+                    (ok == 0 ? "No update yet" : "Last " + hms.format(new Date(ok)) + " (" + sp.getString("clockOkWho", "") + ")") + next);
         }
 
         String geoErr = Store.sp(this).getString("geoErr", "");
