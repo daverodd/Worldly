@@ -71,7 +71,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             R.layout.cal_k4, R.layout.cal_k5, R.layout.cal_k6, R.layout.cal_k7, R.layout.cal_k8};
 
     /** Height (dp) from which the variant with k event rows fits. */
-    private static int heightFor(int k) { return k == 0 ? 110 : 145 + 50 * k; }
+    private static int heightFor(int k) { return k == 0 ? 110 : 140 + 46 * k; }
 
     static void updateAll(Context ctx) {
         AppWidgetManager awm = AppWidgetManager.getInstance(ctx);

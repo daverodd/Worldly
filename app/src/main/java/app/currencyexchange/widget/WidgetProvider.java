@@ -9,7 +9,6 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.os.Build;
 import android.widget.RemoteViews;
 
@@ -71,9 +70,7 @@ public class WidgetProvider extends AppWidgetProvider {
     static void updateAll(Context ctx) {
         int[] ids = widgetIds(ctx);
         if (ids.length == 0) return;
-        Bitmap bmp = Renderer.render(ctx);
-        RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget);
-        rv.setImageViewBitmap(R.id.img, bmp);
+        RemoteViews rv = CurrencyView.build(ctx);
         PendingIntent open = PendingIntent.getActivity(ctx, 0, new Intent(ctx, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         rv.setOnClickPendingIntent(R.id.root, open);

@@ -59,3 +59,5 @@ read from there, so one edit restyles both.
 and cache; `SunCalc` offline sun times; `WidgetProvider` + `RefreshJobService` handle updates;
 `MainActivity` is the settings screen; `Util`, `Net`, `Flags` are helpers.
 Layout units are the 750-wide grid of the original preset.
+
+Layout note: the Calendar and Currency widgets are native views with weighted rows/columns (fonts bundled in res/font), so they follow the widget's real width and height; only flags, the Visa logo and clock backgrounds are small bitmaps.
