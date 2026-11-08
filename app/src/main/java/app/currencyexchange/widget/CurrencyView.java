@@ -43,7 +43,7 @@ final class CurrencyView {
             R.layout.widget_k4, R.layout.widget_k5, R.layout.widget_k6};
 
     /** Widget height (dp) from which the variant with k rows fits. */
-    static int heightFor(int k) { return 114 + 54 * k; }
+    static int heightFor(int k) { return 114 + 57 * k; }
 
     private static final android.util.LruCache<String, Bitmap> PICS = new android.util.LruCache<>(60);
 
@@ -86,7 +86,16 @@ final class CurrencyView {
             }
             ZonedDateTime now = ZonedDateTime.now(z);
             int phase = SunCalc.phase(lat, lon, z, now);
-            rv.setImageViewBitmap(id(ctx, "clk_bg_" + i), clockBg(Flags.flag(ctx, cc), phase, i == 0, i == 3));
+            Bitmap[] pcs = clockPieces(Flags.flag(ctx, cc), phase, i == 0 ? 1 : (i == 3 ? 2 : 0));
+            if (i == 0) {
+                rv.setImageViewBitmap(id(ctx, "clk_bg_0a"), pcs[0]);
+                rv.setImageViewBitmap(id(ctx, "clk_bg_0"), pcs[1]);
+            } else if (i == 3) {
+                rv.setImageViewBitmap(id(ctx, "clk_bg_3"), pcs[0]);
+                rv.setImageViewBitmap(id(ctx, "clk_bg_3a"), pcs[1]);
+            } else {
+                rv.setImageViewBitmap(id(ctx, "clk_bg_" + i), pcs[0]);
+            }
             txt(ctx, rv, id(ctx, "clk_day_" + i), now.format(dayF), reg, Theme.TEXT_SOFT, 11, true);
             txt(ctx, rv, id(ctx, "clk_time_" + i), now.format(timeF), bold, Theme.TEXT, 22, true);
             txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 12, true);
@@ -191,22 +200,55 @@ final class CurrencyView {
         }
     }
 
-    /** Clock cell background: flag faded into graphite, day (amber) / night (slate) strip below, outer corners rounded. */
-    private static Bitmap clockBg(Bitmap flag, int phase, boolean roundLeft, boolean roundRight) {
-        String key = "c|" + System.identityHashCode(flag) + "|" + phase + roundLeft + roundRight;
-        Bitmap hit = PICS.get(key);
-        if (hit != null) return hit;
-        Bitmap made = clockBg0(flag, phase, roundLeft, roundRight);
-        PICS.put(key, made);
-        return made;
+    // Clock cell pictures are drawn for a typical 90 x 84 dp cell at 1.5 px per dp. The outer bottom corners are
+    // separate 28 dp wide slices shown at a fixed width, so their curve always matches the card exactly.
+    private static final float PXDP = 1.5f;
+    private static final int CW = Math.round(90 * PXDP), CH = Math.round(84 * PXDP), SLICE = Math.round(28 * PXDP);
+    private static final float INNER_R = 27 * PXDP; // card radius just inside its 1 dp border
+
+    /** side 0: middle cell {full}; 1: left cell {corner, rest}; 2: right cell {rest, corner}. */
+    private static Bitmap[] clockPieces(Bitmap flag, int phase, int side) {
+        String key = "c|" + System.identityHashCode(flag) + "|" + phase + "|" + side;
+        Bitmap a = PICS.get(key + "|0"), b = PICS.get(key + "|1");
+        if (a != null && (side == 0 || b != null)) return side == 0 ? new Bitmap[]{a} : new Bitmap[]{a, b};
+        Bitmap full = clockFull(flag, phase);
+        Bitmap[] out;
+        if (side == 0) {
+            out = new Bitmap[]{full};
+        } else if (side == 1) {
+            out = new Bitmap[]{corner(Bitmap.createBitmap(full, 0, 0, SLICE, CH), true),
+                    Bitmap.createBitmap(full, SLICE, 0, CW - SLICE, CH)};
+        } else {
+            out = new Bitmap[]{Bitmap.createBitmap(full, 0, 0, CW - SLICE, CH),
+                    corner(Bitmap.createBitmap(full, CW - SLICE, 0, SLICE, CH), false)};
+        }
+        PICS.put(key + "|0", out[0]);
+        if (out.length > 1) PICS.put(key + "|1", out[1]);
+        return out;
     }
 
-    private static Bitmap clockBg0(Bitmap flag, int phase, boolean roundLeft, boolean roundRight) {
-        final int w = 120, h = 144;
+    /** Clears the outside of a round bottom corner (bottom-left if left, else bottom-right). */
+    private static Bitmap corner(Bitmap src, boolean left) {
+        Bitmap b = src.copy(Bitmap.Config.ARGB_8888, true);
+        Canvas c = new Canvas(b);
+        int w = b.getWidth(), h = b.getHeight();
+        float r = INNER_R;
+        Path outside = new Path();
+        outside.addRoundRect(new RectF(left ? 0 : -r, 0, left ? w + r : w, h),
+                new float[]{0, 0, 0, 0, left ? 0 : r, left ? 0 : r, left ? r : 0, left ? r : 0}, Path.Direction.CW);
+        outside.setFillType(Path.FillType.INVERSE_WINDING);
+        Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG);
+        clear.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+        c.drawPath(outside, clear);
+        return b;
+    }
+
+    /** Flag faded into graphite with the sun-phase band below (one exact boundary). */
+    private static Bitmap clockFull(Bitmap flag, int phase) {
+        final int w = CW, h = CH;
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
-        int layer = c.saveLayer(0, 0, w, h, null);
-        final float split = h * 0.9f; // flag area above, day/night band below: one exact boundary
+        final float split = Math.round(h * 0.9f);
         Paint base = new Paint();
         base.setColor(0xFF0B0E15);
         c.drawRect(0, 0, w, h, base);
@@ -218,26 +260,12 @@ final class CurrencyView {
             p.setColor(Theme.SURFACE_HI);
             c.drawRect(fr, p);
         }
-        // fade the flag into graphite; fully dark exactly where the band starts
         Paint gp = new Paint();
         gp.setShader(new LinearGradient(0, 0, 0, split, 0x66000000, 0xFF0B0E15, Shader.TileMode.CLAMP));
         c.drawRect(fr, gp);
-        // sun phase band
         Paint sp = new Paint();
         sp.setColor(phaseColor(phase));
         c.drawRect(0, split, w, h, sp);
-
-        // bottom outer corners (the top corners belong to the weather bar above)
-        float rx = 37f, ry = 48f;
-        Path outside = new Path();
-        outside.addRoundRect(new RectF(0, 0, w, h),
-                new float[]{0, 0, 0, 0, roundRight ? rx : 0, roundRight ? ry : 0, roundLeft ? rx : 0, roundLeft ? ry : 0},
-                Path.Direction.CW);
-        outside.setFillType(Path.FillType.INVERSE_WINDING);
-        Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG);
-        clear.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
-        c.drawPath(outside, clear);
-        c.restoreToCount(layer);
         return out;
     }
 
