@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+// API keys: keys.properties (local, git-ignored) -> environment variables (CI) -> empty.
+// They can also be typed into the app's settings screen at any time.
+def keys = new Properties()
+def keysFile = rootProject.file('keys.properties')
+if (keysFile.exists()) keysFile.withInputStream { keys.load(it) }
+def geoKey = keys.getProperty('GEOAPIFY_KEY') ?: System.getenv('GEOAPIFY_KEY') ?: ''
+def wxKey  = keys.getProperty('TOMORROW_KEY') ?: System.getenv('TOMORROW_KEY') ?: ''
+
+android {
+    namespace 'app.currencyexchange.widget'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.currencyexchange.widget'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+        buildConfigField 'String', 'GEOAPIFY_KEY', "\"${geoKey}\""
+        buildConfigField 'String', 'TOMORROW_KEY', "\"${wxKey}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}

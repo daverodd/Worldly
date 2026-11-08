@@ -1,0 +1,91 @@
+package app.currencyexchange.widget;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import org.json.JSONObject;
+
+import java.util.Locale;
+
+/** Settings + cached network data, all in one SharedPreferences file. */
+final class Store {
+    private Store() {}
+
+    static final String[] DEF_CITIES = {"Mexico City", "Bucharest", "Brussels", "Charlotte"};
+    static final String[] DEF_FROM = {"USD", "DKK", "EUR", "RON"};
+
+    static SharedPreferences sp(Context c) {
+        return c.getApplicationContext().getSharedPreferences("cfg", Context.MODE_PRIVATE);
+    }
+
+    // ---- settings ----
+    static String city(Context c, int i) { return sp(c).getString("city" + i, DEF_CITIES[i]); }
+    static String from(Context c, int i) { return sp(c).getString("from" + i, DEF_FROM[i]); }
+    static String to(Context c) { return sp(c).getString("to", "COP"); }
+    static float fee(Context c) { return sp(c).getFloat("fee", 2.0f); }
+    static String home(Context c) { return sp(c).getString("home", ""); }
+    static String geoKey(Context c) { return sp(c).getString("geoKey", BuildConfig.GEOAPIFY_KEY); }
+    static String wxKey(Context c) { return sp(c).getString("wxKey", BuildConfig.TOMORROW_KEY); }
+
+    static void setDeviceLocation(Context c, double lat, double lon) {
+        sp(c).edit().putString("devLat", String.valueOf(lat)).putString("devLon", String.valueOf(lon)).apply();
+    }
+
+    /** {lat, lon} for weather + sunrise/sunset: home city if set, else cached device location. */
+    static double[] weatherLatLon(Context c) {
+        String home = home(c).trim();
+        if (!home.isEmpty()) {
+            JSONObject g = geo(c, home);
+            if (g != null) return new double[]{g.optDouble("lat", Double.NaN), g.optDouble("lon", Double.NaN)};
+        }
+        try {
+            String la = sp(c).getString("devLat", null), lo = sp(c).getString("devLon", null);
+            if (la != null && lo != null) return new double[]{Double.parseDouble(la), Double.parseDouble(lo)};
+        } catch (NumberFormatException ignored) { }
+        return new double[]{Double.NaN, Double.NaN};
+    }
+
+    // ---- cache ----
+    static long lastFetch(Context c) { return sp(c).getLong("lastFetch", 0L); }
+    static void setLastFetch(Context c) { sp(c).edit().putLong("lastFetch", System.currentTimeMillis()).apply(); }
+
+    private static String key(String s) { return s.trim().toLowerCase(Locale.ROOT); }
+
+    static JSONObject geo(Context c, String city) {
+        String s = sp(c).getString("geo_" + key(city), null);
+        if (s == null) return null;
+        try { return new JSONObject(s); } catch (Exception e) { return null; }
+    }
+    static void putGeo(Context c, String city, JSONObject o) {
+        sp(c).edit().putString("geo_" + key(city), o.toString()).apply();
+    }
+
+    static double rate(Context c, String from, String to) {
+        return Double.longBitsToDouble(sp(c).getLong("rate_" + key(from) + "_" + key(to), Double.doubleToLongBits(Double.NaN)));
+    }
+    static void putRate(Context c, String from, String to, double v) {
+        sp(c).edit().putLong("rate_" + key(from) + "_" + key(to), Double.doubleToLongBits(v)).apply();
+    }
+
+    static double visa(Context c, String from, String to) {
+        return Double.longBitsToDouble(sp(c).getLong("visa_" + key(from) + "_" + key(to), Double.doubleToLongBits(Double.NaN)));
+    }
+    static void putVisa(Context c, String from, String to, double v) {
+        sp(c).edit().putLong("visa_" + key(from) + "_" + key(to), Double.doubleToLongBits(v)).apply();
+    }
+
+    /** {feelsLikeC, humidityPct} or null. */
+    static double[] weather(Context c) {
+        String s = sp(c).getString("wx", null);
+        if (s == null) return null;
+        try {
+            JSONObject o = new JSONObject(s);
+            return new double[]{o.getDouble("feels"), o.getDouble("hum")};
+        } catch (Exception e) { return null; }
+    }
+    static void putWeather(Context c, double feels, double hum) {
+        try {
+            sp(c).edit().putString("wx", new JSONObject().put("feels", feels).put("hum", hum).toString()).apply();
+        } catch (Exception ignored) { }
+    }
+}
