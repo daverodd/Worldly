@@ -71,7 +71,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             R.layout.cal_k4, R.layout.cal_k5, R.layout.cal_k6, R.layout.cal_k7, R.layout.cal_k8};
 
     /** Height (dp) from which the variant with k event rows fits. */
-    private static int heightFor(int k) { return k == 0 ? 110 : 160 + 46 * k; }
+    private static int heightFor(int k) { return k == 0 ? 110 : 150 + 42 * k; }
 
     static void updateAll(Context ctx) {
         AppWidgetManager awm = AppWidgetManager.getInstance(ctx);
@@ -140,11 +140,11 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         long now = System.currentTimeMillis();
         java.util.Locale loc = java.util.Locale.getDefault();
 
-        t(rv, tf, R.id.cal_day, String.valueOf(today.getDayOfMonth()), Theme.TEXT, 38, 0.82f, false);
-        t(rv, tf, R.id.cal_month, today.format(java.time.format.DateTimeFormatter.ofPattern("MMMM", loc)), Theme.TEXT, 19, 0.82f, false);
+        t(rv, tf, R.id.cal_day, String.valueOf(today.getDayOfMonth()), Theme.TEXT, 32, 0.82f, false);
+        t(rv, tf, R.id.cal_month, today.format(java.time.format.DateTimeFormatter.ofPattern("MMMM", loc)), Theme.TEXT, 16, 0.82f, false);
         int week = today.get(java.time.temporal.WeekFields.of(java.time.DayOfWeek.SUNDAY, 1).weekOfYear());
         t(rv, tf, R.id.cal_sub, "Today, " + today.format(java.time.format.DateTimeFormatter.ofPattern("EEEE", loc))
-                + "  \u00B7  Week " + week, Theme.MUTED, 13, 0.8f, false);
+                + "  \u00B7  Week " + week, Theme.MUTED, 11, 0.8f, false);
 
         // week row, Sunday first
         LocalDate sunday = today.minusDays(today.getDayOfWeek().getValue() % 7);
@@ -153,8 +153,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             boolean isToday = d.equals(today);
             int lab = rid(ctx, "wk_label_" + i), num = rid(ctx, "wk_num_" + i);
             t(rv, tf, lab, d.format(java.time.format.DateTimeFormatter.ofPattern("EEE", loc)).toUpperCase(loc),
-                    isToday ? Theme.AMBER_LIGHT : Theme.MUTED, 11, 0.8f, false);
-            t(rv, tf, num, String.valueOf(d.getDayOfMonth()), isToday ? 0xFFFFFFFF : Theme.TEXT_SOFT, 16, 0.6f, false);
+                    isToday ? Theme.AMBER_LIGHT : Theme.MUTED, 9.5f, 0.8f, false);
+            t(rv, tf, num, String.valueOf(d.getDayOfMonth()), isToday ? 0xFFFFFFFF : Theme.TEXT_SOFT, 13, 0.58f, false);
             rv.setInt(num, "setBackgroundResource", isToday ? R.drawable.cal_today : 0);
         }
 
@@ -168,9 +168,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             rv.setViewVisibility(row, android.view.View.VISIBLE);
             if (!allowed || events.isEmpty()) {
                 rv.setViewVisibility(bar, android.view.View.INVISIBLE);
-                t(rv, tf, title, allowed ? "No upcoming events" : "Calendar access needed", Theme.TEXT, 18, 0.8f, false);
-                t(rv, tf, time, allowed ? "Nothing in the next 120 days" : "Tap to open settings", Theme.MUTED, 13, 0.8f, false);
-                t(rv, tf, hint, "", Theme.MUTED, 13, 0.8f, false);
+                t(rv, tf, title, allowed ? "No upcoming events" : "Calendar access needed", Theme.TEXT, 15, 0.8f, false);
+                t(rv, tf, time, allowed ? "Nothing in the next 120 days" : "Tap to open settings", Theme.MUTED, 11, 0.8f, false);
+                t(rv, tf, hint, "", Theme.MUTED, 11, 0.8f, false);
                 continue;
             }
             CalendarData.Event ev = events.get(i);
@@ -186,7 +186,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             if (!ev.date.equals(today)) {
                 tm = ev.date.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", loc)) + "  \u00B7  " + tm;
             }
-            t(rv, tf, time, tm, Theme.MUTED, 13, 0.8f, false);
+            t(rv, tf, time, tm, Theme.MUTED, 11, 0.8f, false);
             String h = "";
             if (!ev.allDay && ev.date.equals(today)) {
                 if (ev.begin <= now) h = "now";
@@ -195,13 +195,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                     if (mins <= 90) h = "in " + mins + (mins == 1 ? " minute" : " minutes");
                 }
             }
-            t(rv, tf, hint, h, Theme.AMBER_LIGHT, 13, 0.8f, true);
-            t(rv, tf, title, Util.ellipsize(Util.capWords(ev.title), 30), Theme.TEXT, 18, 0.8f, false);
+            t(rv, tf, hint, h, Theme.AMBER_LIGHT, 11, 0.8f, true);
+            t(rv, tf, title, Util.ellipsize(Util.capWords(ev.title), 30), Theme.TEXT, 15, 0.8f, false);
         }
         int hidden = allowed ? events.size() - k : 0;
         if (k > 0 && hidden > 0) {
             rv.setViewVisibility(R.id.cal_more, android.view.View.VISIBLE);
-            t(rv, tf, R.id.cal_more, "+" + hidden + " more", Theme.MUTED, 11, 0.8f, false);
+            t(rv, tf, R.id.cal_more, "+" + hidden + " more", Theme.MUTED, 9.5f, 0.8f, false);
         } else {
             rv.setViewVisibility(R.id.cal_more, android.view.View.GONE);
         }

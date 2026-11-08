@@ -6,7 +6,7 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="10dp">
+    android:padding="12dp">
 
     <LinearLayout
         android:id="@+id/panel"
@@ -22,13 +22,13 @@
         <!-- header -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="48dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
         <ImageView
             android:id="@+id/cal_day"
             android:layout_width="wrap_content"
-            android:layout_height="54dp"
+            android:layout_height="47dp"
             android:adjustViewBounds="true"
             android:scaleType="fitStart" />
 
@@ -41,13 +41,13 @@
                 <ImageView
                     android:id="@+id/cal_month"
                     android:layout_width="match_parent"
-                    android:layout_height="27dp"
+                    android:layout_height="23dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitStart" />
                 <ImageView
                     android:id="@+id/cal_sub"
                     android:layout_width="match_parent"
-                    android:layout_height="19dp"
+                    android:layout_height="16dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="2dp"
                     android:scaleType="fitStart" />
@@ -64,7 +64,7 @@
         <!-- week row -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="44dp"
             android:layout_marginTop="2dp"
             android:orientation="horizontal">
             <LinearLayout
@@ -76,13 +76,13 @@
                 <ImageView
                     android:id="@+id/wk_label_0"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
+                    android:layout_height="14dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter" />
                 <ImageView
                     android:id="@+id/wk_num_0"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="3dp"
                     android:scaleType="fitCenter" />
@@ -96,13 +96,13 @@
                 <ImageView
                     android:id="@+id/wk_label_1"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
+                    android:layout_height="14dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter" />
                 <ImageView
                     android:id="@+id/wk_num_1"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="3dp"
                     android:scaleType="fitCenter" />
@@ -116,13 +116,13 @@
                 <ImageView
                     android:id="@+id/wk_label_2"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
+                    android:layout_height="14dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter" />
                 <ImageView
                     android:id="@+id/wk_num_2"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="3dp"
                     android:scaleType="fitCenter" />
@@ -136,13 +136,13 @@
                 <ImageView
                     android:id="@+id/wk_label_3"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
+                    android:layout_height="14dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter" />
                 <ImageView
                     android:id="@+id/wk_num_3"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="3dp"
                     android:scaleType="fitCenter" />
@@ -156,13 +156,13 @@
                 <ImageView
                     android:id="@+id/wk_label_4"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
+                    android:layout_height="14dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter" />
                 <ImageView
                     android:id="@+id/wk_num_4"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="3dp"
                     android:scaleType="fitCenter" />
@@ -176,13 +176,13 @@
                 <ImageView
                     android:id="@+id/wk_label_5"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
+                    android:layout_height="14dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter" />
                 <ImageView
                     android:id="@+id/wk_num_5"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="3dp"
                     android:scaleType="fitCenter" />
@@ -196,13 +196,13 @@
                 <ImageView
                     android:id="@+id/wk_label_6"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
+                    android:layout_height="14dp"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter" />
                 <ImageView
                     android:id="@+id/wk_num_6"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:adjustViewBounds="true"
                     android:layout_marginTop="3dp"
                     android:scaleType="fitCenter" />
@@ -227,7 +227,7 @@
         <ImageView
             android:id="@+id/cal_more"
             android:layout_width="match_parent"
-            android:layout_height="16dp"
+            android:layout_height="14dp"
             android:adjustViewBounds="true"
             android:scaleType="fitEnd" />
     </LinearLayout>

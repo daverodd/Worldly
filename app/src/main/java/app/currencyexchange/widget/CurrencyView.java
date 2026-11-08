@@ -34,10 +34,9 @@ final class CurrencyView {
         return c.getResources().getIdentifier(name, "id", c.getPackageName());
     }
 
-    private static final float PX = 64f;
-
-    private static void txt(Context ctx, RemoteViews rv, int viewId, String s, Typeface tf, int color, float fill, boolean shadow) {
-        rv.setImageViewBitmap(viewId, TextBmp.make(tf, PX, fill, false, shadow, s, color));
+    /** Text as a picture at a fixed size (sizeDp = font size); the ImageView height in the layout is sizeDp * 1.46. */
+    private static void txt(Context ctx, RemoteViews rv, int viewId, String s, Typeface tf, int color, float sizeDp, boolean shadow) {
+        rv.setImageViewBitmap(viewId, TextBmp.make(tf, sizeDp * 2.5f, 0.8f, false, shadow, s, color));
     }
 
     static RemoteViews build(Context ctx) {
@@ -55,11 +54,11 @@ final class CurrencyView {
             rise = Util.hm(t[0]);
             set = Util.hm(t[1]);
         }
-        rv.setImageViewBitmap(R.id.hdr_feels, TextBmp.make(reg, PX, 0.42f, false, false,
+        rv.setImageViewBitmap(R.id.hdr_feels, TextBmp.make(reg, 12 * 2.5f, 0.8f, false, false,
                 new String[]{"Feels like ", feels + "\u00B0C"}, new int[]{Theme.MUTED, Theme.TEXT}));
-        txt(ctx, rv, R.id.hdr_hum, hum + "%", reg, Theme.TEXT, 0.42f, false);
-        txt(ctx, rv, R.id.hdr_rise, rise, reg, Theme.TEXT, 0.42f, false);
-        txt(ctx, rv, R.id.hdr_set, set, reg, Theme.TEXT, 0.42f, false);
+        txt(ctx, rv, R.id.hdr_hum, hum + "%", reg, Theme.TEXT, 12, false);
+        txt(ctx, rv, R.id.hdr_rise, rise, reg, Theme.TEXT, 12, false);
+        txt(ctx, rv, R.id.hdr_set, set, reg, Theme.TEXT, 12, false);
 
         // world clocks
         DateTimeFormatter dayF = DateTimeFormatter.ofPattern("EEEE", Locale.getDefault());
@@ -79,9 +78,9 @@ final class CurrencyView {
             ZonedDateTime now = ZonedDateTime.now(z);
             boolean day = SunCalc.isDay(lat, lon, z, now);
             rv.setImageViewBitmap(id(ctx, "clk_bg_" + i), clockBg(Flags.flag(ctx, cc), day, i == 0, i == 3));
-            txt(ctx, rv, id(ctx, "clk_day_" + i), now.format(dayF), reg, Theme.TEXT_SOFT, 0.5f, true);
-            txt(ctx, rv, id(ctx, "clk_time_" + i), now.format(timeF), bold, Theme.TEXT, 0.5f, true);
-            txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 0.5f, true);
+            txt(ctx, rv, id(ctx, "clk_day_" + i), now.format(dayF), reg, Theme.TEXT_SOFT, 11, true);
+            txt(ctx, rv, id(ctx, "clk_time_" + i), now.format(timeF), bold, Theme.TEXT, 22, true);
+            txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 12, true);
         }
 
         // currency rows
@@ -91,22 +90,22 @@ final class CurrencyView {
         for (int i = 0; i < 4; i++) {
             String from = Store.from(ctx, i).trim().toUpperCase(Locale.ROOT);
             rv.setImageViewBitmap(id(ctx, "fl_a_" + i), flagOrLabel(ctx, Util.countryOfCurrency(from), from));
-            txt(ctx, rv, id(ctx, "code_a_" + i), from, reg, Theme.TEXT, 0.45f, false);
+            txt(ctx, rv, id(ctx, "code_a_" + i), from, reg, Theme.TEXT, 15, false);
             rv.setImageViewBitmap(id(ctx, "fl_b_" + i), toFlag);
-            txt(ctx, rv, id(ctx, "code_b_" + i), to, reg, Theme.TEXT, 0.45f, false);
+            txt(ctx, rv, id(ctx, "code_b_" + i), to, reg, Theme.TEXT, 15, false);
             double market = Store.rate(ctx, from, to);
-            txt(ctx, rv, id(ctx, "mkt_lbl_" + i), "Market", reg, Theme.MUTED, 0.55f, false);
-            txt(ctx, rv, id(ctx, "mkt_val_" + i), Util.fmt0(market), reg, Theme.TEXT, 0.75f, false);
+            txt(ctx, rv, id(ctx, "mkt_lbl_" + i), "Market", reg, Theme.MUTED, 10, false);
+            txt(ctx, rv, id(ctx, "mkt_val_" + i), Util.fmt0(market), reg, Theme.TEXT, 14, false);
             rv.setImageViewBitmap(id(ctx, "visa_logo_" + i), visaLogo);
             double visa = Util.alignToMarket(Store.visa(ctx, from, to), market);
             int vv = id(ctx, "visa_val_" + i);
             if (!Double.isNaN(visa)) {
-                txt(ctx, rv, vv, Util.fmt0(visa), reg, Theme.TEXT_SOFT, 0.65f, false);
+                txt(ctx, rv, vv, Util.fmt0(visa), reg, Theme.TEXT_SOFT, 12, false);
             } else if (!Double.isNaN(market)) {
                 // Visa did not answer: estimate = market + fee, marked "~" and muted
-                txt(ctx, rv, vv, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), reg, Theme.MUTED, 0.65f, false);
+                txt(ctx, rv, vv, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), reg, Theme.MUTED, 12, false);
             } else {
-                txt(ctx, rv, vv, "", reg, Theme.MUTED, 0.65f, false);
+                txt(ctx, rv, vv, "", reg, Theme.MUTED, 12, false);
             }
         }
         return rv;
