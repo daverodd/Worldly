@@ -274,21 +274,21 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        ui.removeCallbacks(statusTicker);
+        statusUi.removeCallbacks(statusTicker);
     }
 
-    private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final android.os.Handler statusUi = new android.os.Handler(android.os.Looper.getMainLooper());
     /** Keeps the Status card current while the app is open, so you can watch the clock updates arrive. */
     private final Runnable statusTicker = new Runnable() {
         @Override
         public void run() {
-            ui.removeCallbacks(this);
+            statusUi.removeCallbacks(this);
             if (statusBox != null && banner != null) {
                 int v = banner.getVisibility();
                 updateStatus();
                 banner.setVisibility(v); // a running "Updating…" message stays
             }
-            ui.postDelayed(this, 5000);
+            statusUi.postDelayed(this, 5000);
         }
     };
 
