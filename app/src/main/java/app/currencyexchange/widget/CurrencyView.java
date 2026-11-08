@@ -43,7 +43,7 @@ final class CurrencyView {
             R.layout.widget_k4, R.layout.widget_k5, R.layout.widget_k6};
 
     /** Widget height (dp) from which the variant with k rows fits. */
-    static int heightFor(int k) { return 136 + 54 * k; }
+    static int heightFor(int k) { return 120 + 54 * k; }
 
     private static final android.util.LruCache<String, Bitmap> PICS = new android.util.LruCache<>(60);
 
@@ -85,8 +85,8 @@ final class CurrencyView {
                 cc = g.optString("cc", "");
             }
             ZonedDateTime now = ZonedDateTime.now(z);
-            boolean day = SunCalc.isDay(lat, lon, z, now);
-            rv.setImageViewBitmap(id(ctx, "clk_bg_" + i), clockBg(Flags.flag(ctx, cc), day, i == 0, i == 3));
+            int phase = SunCalc.phase(lat, lon, z, now);
+            rv.setImageViewBitmap(id(ctx, "clk_bg_" + i), clockBg(Flags.flag(ctx, cc), phase, i == 0, i == 3));
             txt(ctx, rv, id(ctx, "clk_day_" + i), now.format(dayF), reg, Theme.TEXT_SOFT, 11, true);
             txt(ctx, rv, id(ctx, "clk_time_" + i), now.format(timeF), bold, Theme.TEXT, 22, true);
             txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 12, true);
@@ -134,20 +134,20 @@ final class CurrencyView {
 
     private static Bitmap flagOrLabel0(Context ctx, String cc, String code) {
         Bitmap fl = Flags.flag(ctx, cc);
-        Bitmap out = Bitmap.createBitmap(140, 120, Bitmap.Config.ARGB_8888);
+        Bitmap out = Bitmap.createBitmap(120, 120, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
-        RectF r = new RectF(0, 0, 140, 120);
+        RectF r = new RectF(0, 0, 120, 120);
         if (fl != null) {
-            cover(c, fl, r, 16);
+            cover(c, fl, r, 60);
         } else {
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
             p.setColor(Theme.SURFACE_HI);
-            c.drawRoundRect(r, 16, 16, p);
+            c.drawOval(r, p);
             Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
             t.setColor(Theme.MUTED);
             t.setTextSize(40);
             t.setTextAlign(Paint.Align.CENTER);
-            c.drawText(cc == null ? "" : cc.toUpperCase(Locale.ROOT), 70, 60 - (t.ascent() + t.descent()) / 2f, t);
+            c.drawText(cc == null ? "" : cc.toUpperCase(Locale.ROOT), 60, 60 - (t.ascent() + t.descent()) / 2f, t);
         }
         return out;
     }
@@ -182,23 +182,32 @@ final class CurrencyView {
         return out;
     }
 
+    private static int phaseColor(int phase) {
+        switch (phase) {
+            case SunCalc.DAY: return Theme.AMBER;
+            case SunCalc.SUNSET: return 0xFFE2553A;  // golden hour / sunset / sunrise
+            case SunCalc.BLUE: return 0xFF3F6FD8;    // blue hour
+            default: return Theme.NIGHT;
+        }
+    }
+
     /** Clock cell background: flag faded into graphite, day (amber) / night (slate) strip below, outer corners rounded. */
-    private static Bitmap clockBg(Bitmap flag, boolean day, boolean roundLeft, boolean roundRight) {
-        String key = "c|" + System.identityHashCode(flag) + "|" + day + roundLeft + roundRight;
+    private static Bitmap clockBg(Bitmap flag, int phase, boolean roundLeft, boolean roundRight) {
+        String key = "c|" + System.identityHashCode(flag) + "|" + phase + roundLeft + roundRight;
         Bitmap hit = PICS.get(key);
         if (hit != null) return hit;
-        Bitmap made = clockBg0(flag, day, roundLeft, roundRight);
+        Bitmap made = clockBg0(flag, phase, roundLeft, roundRight);
         PICS.put(key, made);
         return made;
     }
 
-    private static Bitmap clockBg0(Bitmap flag, boolean day, boolean roundLeft, boolean roundRight) {
+    private static Bitmap clockBg0(Bitmap flag, int phase, boolean roundLeft, boolean roundRight) {
         final int w = 120, h = 144;
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         int layer = c.saveLayer(0, 0, w, h, null);
         Paint sp = new Paint(Paint.ANTI_ALIAS_FLAG);
-        sp.setShader(new LinearGradient(0, 0, w, 0, day ? Theme.AMBER : Theme.NIGHT, Theme.HEADER, Shader.TileMode.CLAMP));
+        sp.setShader(new LinearGradient(0, 0, w, 0, phaseColor(phase), Theme.HEADER, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, sp);
         RectF fr = new RectF(0, 0, w, h * 0.92f);
         if (flag != null) {

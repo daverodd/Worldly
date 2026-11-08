@@ -47,6 +47,34 @@ final class SunCalc {
         return m >= t[0] || m < t[1]; // wraps past midnight (extreme longitudes)
     }
 
+    static final int DAY = 0, SUNSET = 1, BLUE = 2, NIGHT = 3;
+
+    /** Sun height in degrees above the horizon at this place and instant (about +-0.5 degree). */
+    static double elevation(double lat, double lon, long epochMs) {
+        double d = epochMs / 86400000.0 + 2440587.5 - 2451545.0;
+        double m = norm360(357.5291 + 0.98560028 * d);
+        double mr = Math.toRadians(m);
+        double c = 1.9148 * Math.sin(mr) + 0.0200 * Math.sin(2 * mr) + 0.0003 * Math.sin(3 * mr);
+        double lam = Math.toRadians(norm360(m + c + 180.0 + 102.9372));
+        double eps = Math.toRadians(23.4397);
+        double dec = Math.asin(Math.sin(lam) * Math.sin(eps));
+        double ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam));
+        double gmst = norm360(280.46061837 + 360.98564736629 * d);
+        double h = Math.toRadians(gmst + lon) - ra;
+        double latR = Math.toRadians(lat);
+        return Math.toDegrees(Math.asin(Math.sin(latR) * Math.sin(dec) + Math.cos(latR) * Math.cos(dec) * Math.cos(h)));
+    }
+
+    /** DAY (sun above 6 deg), SUNSET (golden hour, sunrise or sunset, 6 to -0.8 deg), BLUE (blue hour, -0.8 to -8 deg), NIGHT. */
+    static int phase(double lat, double lon, ZoneId zone, ZonedDateTime now) {
+        if (Double.isNaN(lat) || Double.isNaN(lon)) return isDay(lat, lon, zone, now) ? DAY : NIGHT;
+        double el = elevation(lat, lon, now.toInstant().toEpochMilli());
+        if (el >= 6) return DAY;
+        if (el >= -0.833) return SUNSET;
+        if (el >= -8) return BLUE;
+        return NIGHT;
+    }
+
     private static int minuteOfDay(double julian, ZoneId zone) {
         long ms = Math.round((julian - 2440587.5) * 86400000.0);
         ZonedDateTime z = Instant.ofEpochMilli(ms).atZone(zone);
