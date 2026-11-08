@@ -43,7 +43,7 @@ final class CurrencyView {
             R.layout.widget_k4, R.layout.widget_k5, R.layout.widget_k6};
 
     /** Widget height (dp) from which the variant with k rows fits. */
-    static int heightFor(int k) { return 120 + 54 * k; }
+    static int heightFor(int k) { return 114 + 54 * k; }
 
     private static final android.util.LruCache<String, Bitmap> PICS = new android.util.LruCache<>(60);
 
@@ -103,7 +103,7 @@ final class CurrencyView {
             rv.setImageViewBitmap(id(ctx, "fl_b_" + i), toFlag);
             txt(ctx, rv, id(ctx, "code_b_" + i), to, reg, Theme.TEXT, 15, false);
             double market = Store.rate(ctx, from, to);
-            txt(ctx, rv, id(ctx, "mkt_lbl_" + i), "Market", reg, Theme.MUTED, 10, false);
+            txt(ctx, rv, id(ctx, "mkt_lbl_" + i), "Market", reg, Theme.MUTED, 12.5f, false);
             txt(ctx, rv, id(ctx, "mkt_val_" + i), Util.fmt0(market), reg, Theme.TEXT, 14, false);
             rv.setImageViewBitmap(id(ctx, "visa_logo_" + i), visaLogo);
             double visa = Util.alignToMarket(Store.visa(ctx, from, to), market);
@@ -206,10 +206,11 @@ final class CurrencyView {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         int layer = c.saveLayer(0, 0, w, h, null);
-        Paint sp = new Paint(Paint.ANTI_ALIAS_FLAG);
-        sp.setShader(new LinearGradient(0, 0, w, 0, phaseColor(phase), Theme.HEADER, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, sp);
-        RectF fr = new RectF(0, 0, w, h * 0.92f);
+        final float split = h * 0.9f; // flag area above, day/night band below: one exact boundary
+        Paint base = new Paint();
+        base.setColor(0xFF0B0E15);
+        c.drawRect(0, 0, w, h, base);
+        RectF fr = new RectF(0, 0, w, split);
         if (flag != null) {
             cover(c, flag, fr, 0);
         } else {
@@ -217,15 +218,20 @@ final class CurrencyView {
             p.setColor(Theme.SURFACE_HI);
             c.drawRect(fr, p);
         }
+        // fade the flag into graphite; fully dark exactly where the band starts
         Paint gp = new Paint();
-        gp.setShader(new LinearGradient(0, 0, 0, fr.bottom, 0x66000000, 0xF20B0E15, Shader.TileMode.CLAMP));
+        gp.setShader(new LinearGradient(0, 0, 0, split, 0x66000000, 0xFF0B0E15, Shader.TileMode.CLAMP));
         c.drawRect(fr, gp);
+        // sun phase band
+        Paint sp = new Paint();
+        sp.setColor(phaseColor(phase));
+        c.drawRect(0, split, w, h, sp);
 
-        float rx = 0f, ry = 0f; // outer corners are clipped by the layout (clipToOutline) so they match the card exactly
+        // bottom outer corners (the top corners belong to the weather bar above)
+        float rx = 37f, ry = 48f;
         Path outside = new Path();
         outside.addRoundRect(new RectF(0, 0, w, h),
-                new float[]{roundLeft ? rx : 0, roundLeft ? ry : 0, roundRight ? rx : 0, roundRight ? ry : 0,
-                        roundRight ? rx : 0, roundRight ? ry : 0, roundLeft ? rx : 0, roundLeft ? ry : 0},
+                new float[]{0, 0, 0, 0, roundRight ? rx : 0, roundRight ? ry : 0, roundLeft ? rx : 0, roundLeft ? ry : 0},
                 Path.Direction.CW);
         outside.setFillType(Path.FillType.INVERSE_WINDING);
         Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG);
