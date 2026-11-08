@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
         WidgetProvider.updateAll(app); // instant repaint with whatever is cached
         status.setText(msg);
         new Thread(() -> {
-            Fetcher.refreshAll(app);
+            Fetcher.refreshAll(app, true);
             WidgetProvider.updateAll(app);
             runOnUiThread(this::updateStatus);
         }).start();

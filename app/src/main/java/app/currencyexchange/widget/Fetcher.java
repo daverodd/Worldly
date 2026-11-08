@@ -21,7 +21,14 @@ import java.util.Locale;
 final class Fetcher {
     private Fetcher() {}
 
+    private static final long WEATHER_MIN_GAP_MS = 25L * 60_000L; // Tomorrow.io free plan is rate limited
+
     static void refreshAll(Context ctx) {
+        refreshAll(ctx, false);
+    }
+
+    /** @param force true when the user asked for it (Save & refresh): ignores the weather rate-limit gap */
+    static void refreshAll(Context ctx, boolean force) {
         boolean any = false;
         String to = Store.to(ctx).trim();
 
@@ -66,7 +73,11 @@ final class Fetcher {
                 Store.sp(ctx).edit().putString("wxErr", "no location yet (tap 'Use my location' or type a home city)").apply();
             } else if (key.isEmpty()) {
                 Store.sp(ctx).edit().putString("wxErr", "Tomorrow.io API key is empty").apply();
+            } else if (!force && Store.weather(ctx) != null
+                    && System.currentTimeMillis() - Store.sp(ctx).getLong("wxTs", 0L) < WEATHER_MIN_GAP_MS) {
+                any = true; // fresh enough: do not spend another API call
             } else {
+                Store.sp(ctx).edit().putLong("wxTs", System.currentTimeMillis()).apply(); // counts even if it fails
                 weather(ctx, ll[0], ll[1], key);
                 Store.sp(ctx).edit().remove("wxErr").apply();
                 any = true;
@@ -115,11 +126,11 @@ final class Fetcher {
      * delay, and not on weekends). The last error is stored so the settings screen can show it.
      */
     private static double visaRate(Context ctx, String from, String to, float fee) {
-        String[] hosts = {"https://www.visa.com.au", "https://www.visa.com"};
+        String[] hosts = {"https://www.visa.com.au", "https://usa.visa.com"};
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
         String err = "no response";
-        for (int back = 0; back <= 3; back++) {
-            boolean reached = false;
+        for (int back = 0; back <= 4; back++) {
+            boolean retryOlder = false; // true when the server answered but has no rate for this date
             String d = LocalDate.now().minusDays(back).format(fmt);
             for (String host : hosts) {
                 try {
@@ -129,9 +140,9 @@ final class Fetcher {
                             + "&fromCurr=" + to.toUpperCase(Locale.ROOT)
                             + "&toCurr=" + from.toUpperCase(Locale.ROOT);
                     String body = Net.get(url, host + "/support/consumer/travel-support/exchange-rate-calculator.html");
-                    reached = true;
                     JSONObject o = new JSONObject(body).optJSONObject("originalValues");
                     if (o == null) {
+                        retryOlder = true;
                         err = from + ": no rate for " + d + " (" + body.substring(0, Math.min(100, body.length())) + ")";
                         continue;
                     }
@@ -140,12 +151,17 @@ final class Fetcher {
                         Store.sp(ctx).edit().remove("visaErr").apply();
                         return v;
                     }
+                    retryOlder = true;
                     err = from + ": empty value for " + d;
                 } catch (Exception e) {
-                    err = from + " " + host.replace("https://", "") + ": " + e.getMessage();
+                    String m = String.valueOf(e.getMessage());
+                    err = from + " " + host.replace("https://", "") + " " + d + ": " + m;
+                    // 400/404 = Visa has no rate for that date (weekends, publication delay): try an older date.
+                    // 403/429/timeouts = blocked or offline: older dates will not help.
+                    if (m.startsWith("HTTP 404") || m.startsWith("HTTP 400")) retryOlder = true;
                 }
             }
-            if (!reached) break; // blocked / offline: older dates won't help
+            if (!retryOlder) break;
         }
         Store.sp(ctx).edit().putString("visaErr", err).apply();
         return Double.NaN;
