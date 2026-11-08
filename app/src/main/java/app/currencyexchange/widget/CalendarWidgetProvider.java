@@ -104,7 +104,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             int h = clamp(Math.round(hdp * density), 180, 1800);
             Bitmap bmp = CalendarRenderer.render(ctx, w, h, events, idx, allowed);
             RemoteViews rv;
-            if (CalendarRenderer.compact(w, h)) {
+            if (CalendarRenderer.compact(ctx, w, h)) {
                 rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_calendar);
                 rv.setImageViewBitmap(R.id.img, bmp);
                 rv.setOnClickPendingIntent(R.id.open_top, calendar);

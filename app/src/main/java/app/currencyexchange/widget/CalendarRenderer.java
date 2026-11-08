@@ -20,34 +20,79 @@ import java.util.Locale;
 /**
  * Draws the week-strip + next-event card of the KWGT "Calendar" preset. Same structure as the preset:
  * "MMM yyyy | Week n" header, seven day cells (Sunday to Saturday, today highlighted), a date tile, the event
- * title (16 characters, capitalised), its weekday, five paging dots and previous/next arrows.
+ * title, its weekday, five paging dots and previous/next arrows.
  * Surfaces, borders and the amber highlight come from the shared SAB palette; the font stays Futura Medium BT.
- * Everything is laid out as fractions of the widget so it fills any size; the arrows sit exactly where the
- * transparent tap zones of widget_calendar.xml are (card = bottom 46%, prev 72-85%, next 85-98% of the width).
+ *
+ * Sizing: text and tiles keep a FIXED size (in dp), so making the widget wider only gives the cells and the
+ * title more room, and making it taller adds event rows. Wide-and-short widgets show one event with arrows,
+ * taller ones show a list. The arrow tap zones are fixed-size at the right edge (see widget_calendar.xml).
+ * The outermost corners use the launcher's own widget corner radius so they are never cut off.
  */
 final class CalendarRenderer {
     private CalendarRenderer() {}
 
-    /** Design width in units; heights adapt to the widget. */
-    static final float DESIGN_W = 500f, DESIGN_H = 238f;
+    static final float DESIGN_H = 238f;
+    /** dp of each arrow tap zone and of the margin to the right edge; must match widget_calendar.xml. */
+    static final float ZONE_DP = 42f, MARGIN_DP = 7f;
 
-    /** True when the widget is wide enough for the one-event card; taller widgets get an event list instead. */
-    static boolean compact(int w, int h) {
-        return h <= DESIGN_H * (w / DESIGN_W) * 1.3f;
+    /** One layout unit in pixels (about 0.66 dp). */
+    static float unit(Context ctx) { return ctx.getResources().getDisplayMetrics().density * 0.66f; }
+
+    /** Corner radius the launcher clips widgets with (system value on Android 12+). */
+    static float outerRadius(Context ctx) {
+        float d = ctx.getResources().getDisplayMetrics().density;
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            try {
+                return ctx.getResources().getDimension(android.R.dimen.system_app_widget_background_radius);
+            } catch (Exception ignored) { }
+        }
+        return 16f * d;
+    }
+
+    /** True when the widget is short enough for the one-event card; taller widgets get an event list. */
+    static boolean compact(Context ctx, int w, int h) {
+        return h <= DESIGN_H * unit(ctx) * 1.3f;
     }
 
     static Bitmap render(Context ctx, int w, int h, List<CalendarData.Event> events, int idx, boolean allowed) {
-        return compact(w, h) ? renderCard(ctx, w, h, events, idx, allowed) : renderList(ctx, w, h, events, allowed);
+        return compact(ctx, w, h) ? renderCard(ctx, w, h, events, idx, allowed) : renderList(ctx, w, h, events, allowed);
+    }
+
+    // ------------------------------------------------------------------ drawing helpers
+
+    /** Filled rounded panel with per-corner radii and a thin slate border. */
+    private static void panel(Canvas c, Paint p, RectF r, float top, float bottom, Shader fill, float u) {
+        Path path = new Path();
+        path.addRoundRect(r, new float[]{top, top, top, top, bottom, bottom, bottom, bottom}, Path.Direction.CW);
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(fill);
+        c.drawPath(path, p);
+        p.setShader(null);
+        float sw = Math.max(1f, 1.2f * u);
+        RectF in = new RectF(r.left + sw / 2, r.top + sw / 2, r.right - sw / 2, r.bottom - sw / 2);
+        Path bp = new Path();
+        float t = Math.max(0, top - sw / 2), b = Math.max(0, bottom - sw / 2);
+        bp.addRoundRect(in, new float[]{t, t, t, t, b, b, b, b}, Path.Direction.CW);
+        Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
+        line.setStyle(Paint.Style.STROKE);
+        line.setStrokeWidth(sw);
+        line.setColor(Theme.BORDER);
+        c.drawPath(bp, line);
+    }
+
+    private static LinearGradient h(RectF r, int a, int b) {
+        return new LinearGradient(r.left, 0, r.right, 0, a, b, Shader.TileMode.CLAMP);
+    }
+
+    private static LinearGradient v(RectF r, int a, int b) {
+        return new LinearGradient(0, r.top, 0, r.bottom, a, b, Shader.TileMode.CLAMP);
     }
 
     // ------------------------------------------------------------------ shared: header + week strip
 
-    private static void drawTop(Canvas c, Paint p, RectF top, float u, Locale loc, LocalDate today) {
+    private static void drawTop(Canvas c, Paint p, RectF top, float u, float rOut, Locale loc, LocalDate today) {
         float r = 14f * u;
-        p.setShader(new LinearGradient(0, 0, top.right, 0, Theme.HEADER, Theme.PANEL, Shader.TileMode.CLAMP));
-        c.drawRoundRect(top, r, r, p);
-        p.setShader(null);
-        border(c, top, r, u);
+        panel(c, p, top, Math.max(r, rOut), r, h(top, Theme.HEADER, Theme.PANEL), u);
 
         float th = top.height();
         p.setColor(Theme.TEXT);
@@ -55,7 +100,7 @@ final class CalendarRenderer {
         p.setTextAlign(Paint.Align.LEFT);
         String head = today.format(DateTimeFormatter.ofPattern("MMM yyyy", loc)) + " | Week "
                 + today.get(WeekFields.of(DayOfWeek.SUNDAY, 1).weekOfYear());
-        c.drawText(head, top.left + 16f * u, top.top + th * 0.21f + 7f * u, p);
+        c.drawText(head, top.left + Math.max(16f * u, rOut * 0.8f), top.top + th * 0.21f + 7f * u, p);
 
         float pad = 7f * u, gap = 4f * u;
         RectF strip = new RectF(top.left + pad, top.top + th * 0.40f, top.right - pad, top.bottom - pad);
@@ -67,9 +112,7 @@ final class CalendarRenderer {
             boolean isToday = d.equals(today);
             float x0 = strip.left + i * (cw + gap);
             RectF cell = new RectF(x0, strip.top, x0 + cw, strip.bottom);
-            int a = isToday ? Theme.AMBER : Theme.SURFACE_HI;
-            int b = isToday ? Theme.AMBER_DEEP : Theme.SURFACE;
-            p.setShader(new LinearGradient(0, cell.top, 0, cell.bottom, a, b, Shader.TileMode.CLAMP));
+            p.setShader(v(cell, isToday ? Theme.AMBER : Theme.SURFACE_HI, isToday ? Theme.AMBER_DEEP : Theme.SURFACE));
             c.drawRoundRect(cell, 9f * u, 9f * u, p);
             p.setShader(null);
             float cx = cell.centerX(), cy = cell.centerY();
@@ -84,39 +127,44 @@ final class CalendarRenderer {
         p.setTextAlign(Paint.Align.LEFT);
     }
 
-    // ------------------------------------------------------------------ card mode (wide widgets)
+    private static void tile(Canvas c, Paint p, RectF t, float u) {
+        panel(c, p, t, 9f * u, 9f * u, v(t, Theme.PANEL, Theme.DEEP), u);
+    }
+
+    // ------------------------------------------------------------------ card mode (short widgets)
 
     private static Bitmap renderCard(Context ctx, int w, int h, List<CalendarData.Event> events, int idx, boolean allowed) {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
-        float u = Math.min(w / DESIGN_W, h / DESIGN_H);
+        float density = ctx.getResources().getDisplayMetrics().density;
+        float u = Math.min(unit(ctx), h / DESIGN_H);
+        float rOut = outerRadius(ctx);
         float r = 14f * u;
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setTypeface(Theme.futura(ctx));
         LocalDate today = LocalDate.now();
         Locale loc = Locale.getDefault();
 
-        drawTop(c, p, new RectF(0, 0, w, h * 0.50f), u, loc, today);
+        drawTop(c, p, new RectF(0, 0, w, h * 0.50f), u, rOut, loc, today);
 
         RectF card = new RectF(0, h * 0.54f, w, h);
-        p.setShader(new LinearGradient(0, 0, w, 0, Theme.SURFACE_HI, Theme.SURFACE, Shader.TileMode.CLAMP));
-        c.drawRoundRect(card, r, r, p);
-        p.setShader(null);
-        border(c, card, r, u);
+        panel(c, p, card, r, Math.max(r, rOut), h(card, Theme.SURFACE_HI, Theme.SURFACE), u);
 
         float ch = card.height();
-        float tile = Math.min(ch * 0.76f, 90f * u);
-        float tl = 14f * u;
-        RectF tileR = new RectF(tl, card.centerY() - tile / 2f, tl + tile, card.centerY() + tile / 2f);
-        p.setShader(new LinearGradient(0, tileR.top, 0, tileR.bottom, Theme.PANEL, Theme.DEEP, Shader.TileMode.CLAMP));
-        c.drawRoundRect(tileR, 9f * u, 9f * u, p);
-        p.setShader(null);
-        border(c, tileR, 9f * u, u);
+        float tileSz = Math.min(ch * 0.76f, 90f * u);
+        float tl = Math.max(14f * u, rOut * 0.6f);
+        RectF tileR = new RectF(tl, card.centerY() - tileSz / 2f, tl + tileSz, card.centerY() + tileSz / 2f);
+        tile(c, p, tileR, u);
 
         boolean has = allowed && !events.isEmpty();
         CalendarData.Event ev = has ? events.get(Math.max(0, Math.min(idx, events.size() - 1))) : null;
-        float textX = tileR.right + 18f * u;
+        float textX = tileR.right + 16f * u;
         float mid = card.centerY();
+
+        // arrows: fixed-size zones at the right edge
+        float zone = ZONE_DP * density, margin = MARGIN_DP * density;
+        float prevC = w - margin - zone * 1.5f, nextC = w - margin - zone * 0.5f;
+        float textMax = prevC - zone * 0.5f - 8f * u - textX;
 
         if (has) {
             p.setTextAlign(Paint.Align.CENTER);
@@ -130,7 +178,8 @@ final class CalendarRenderer {
 
             p.setColor(Theme.TEXT);
             p.setTextSize(20f * u);
-            c.drawText(Util.ellipsize(Util.capWords(ev.title), 16), textX, mid - 12f * u, p);
+            c.drawText(android.text.TextUtils.ellipsize(Util.capWords(ev.title), new android.text.TextPaint(p), textMax,
+                    android.text.TextUtils.TruncateAt.END).toString(), textX, mid - 12f * u, p);
             p.setColor(Theme.TEXT_SOFT);
             p.setTextSize(15f * u);
             c.drawText(ev.date.format(DateTimeFormatter.ofPattern("EEEE", loc)), textX, mid + 9f * u, p);
@@ -147,9 +196,9 @@ final class CalendarRenderer {
             }
             p.setStyle(Paint.Style.FILL);
 
-            float d = Math.min(w * 0.08f, ch * 0.40f);
-            arrow(c, p, w * 0.785f, mid, d, true, u);
-            arrow(c, p, w * 0.915f, mid, d, false, u);
+            float d = Math.min(zone * 0.86f, ch * 0.42f);
+            arrow(c, p, prevC, mid, d, true, u);
+            arrow(c, p, nextC, mid, d, false, u);
         } else {
             emptyCard(c, p, tileR, textX, mid, u, today, loc, allowed);
         }
@@ -179,7 +228,8 @@ final class CalendarRenderer {
     private static Bitmap renderList(Context ctx, int w, int h, List<CalendarData.Event> events, boolean allowed) {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
-        float u = w / DESIGN_W;
+        float u = unit(ctx);
+        float rOut = outerRadius(ctx);
         float r = 14f * u;
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setTypeface(Theme.futura(ctx));
@@ -187,53 +237,44 @@ final class CalendarRenderer {
         Locale loc = Locale.getDefault();
 
         float topH = 118f * u;
-        drawTop(c, p, new RectF(0, 0, w, topH), u, loc, today);
+        drawTop(c, p, new RectF(0, 0, w, topH), u, rOut, loc, today);
 
         float y = topH + 8f * u;
         float avail = h - y;
         boolean has = allowed && !events.isEmpty();
         if (!has) {
-            RectF card = new RectF(0, y, w, y + Math.min(avail, 110f * u));
-            p.setShader(new LinearGradient(0, 0, w, 0, Theme.SURFACE_HI, Theme.SURFACE, Shader.TileMode.CLAMP));
-            c.drawRoundRect(card, r, r, p);
-            p.setShader(null);
-            border(c, card, r, u);
-            float tile = Math.min(card.height() * 0.76f, 90f * u);
-            RectF tileR = new RectF(14f * u, card.centerY() - tile / 2f, 14f * u + tile, card.centerY() + tile / 2f);
-            p.setShader(new LinearGradient(0, tileR.top, 0, tileR.bottom, Theme.PANEL, Theme.DEEP, Shader.TileMode.CLAMP));
-            c.drawRoundRect(tileR, 9f * u, 9f * u, p);
-            p.setShader(null);
-            border(c, tileR, 9f * u, u);
-            emptyCard(c, p, tileR, tileR.right + 18f * u, card.centerY(), u, today, loc, allowed);
+            float hh = Math.min(avail, 110f * u);
+            RectF card = new RectF(0, y, w, y + hh);
+            panel(c, p, card, r, card.bottom >= h - 1 ? Math.max(r, rOut) : r, h(card, Theme.SURFACE_HI, Theme.SURFACE), u);
+            float tileSz = Math.min(hh * 0.76f, 90f * u);
+            float tl = Math.max(14f * u, rOut * 0.6f);
+            RectF tileR = new RectF(tl, card.centerY() - tileSz / 2f, tl + tileSz, card.centerY() + tileSz / 2f);
+            tile(c, p, tileR, u);
+            emptyCard(c, p, tileR, tileR.right + 16f * u, card.centerY(), u, today, loc, allowed);
             return bmp;
         }
 
         float gap = 7f * u;
         float rowH = 58f * u;
         int rows = (int) Math.max(1, Math.min(events.size(), Math.floor((avail + gap) / (rowH + gap))));
-        // spread leftover height over the rows (up to 1.5x) so the widget never looks half empty
-        float spare = (avail + gap) / rows - gap;
+        float spare = (avail + gap) / rows - gap; // spread leftover height over the rows (up to 1.5x)
         rowH = Math.min(spare, rowH * 1.5f);
         for (int i = 0; i < rows; i++) {
             CalendarData.Event ev = events.get(i);
             RectF row = new RectF(0, y, w, y + rowH);
-            p.setShader(new LinearGradient(0, 0, w, 0, Theme.SURFACE_HI, Theme.SURFACE, Shader.TileMode.CLAMP));
-            c.drawRoundRect(row, r, r, p);
-            p.setShader(null);
-            border(c, row, r, u);
+            boolean atBottom = row.bottom >= h - 1;
+            panel(c, p, row, r, atBottom ? Math.max(r, rOut) : r, h(row, Theme.SURFACE_HI, Theme.SURFACE), u);
 
-            float tile = rowH - 14f * u;
-            RectF t = new RectF(8f * u, row.centerY() - tile / 2f, 8f * u + tile, row.centerY() + tile / 2f);
-            p.setShader(new LinearGradient(0, t.top, 0, t.bottom, Theme.PANEL, Theme.DEEP, Shader.TileMode.CLAMP));
-            c.drawRoundRect(t, 8f * u, 8f * u, p);
-            p.setShader(null);
-            border(c, t, 8f * u, u);
+            float tileSz = rowH - 14f * u;
+            float tl = Math.max(8f * u, atBottom ? rOut * 0.5f : 8f * u);
+            RectF t = new RectF(tl, row.centerY() - tileSz / 2f, tl + tileSz, row.centerY() + tileSz / 2f);
+            panel(c, p, t, 8f * u, 8f * u, v(t, Theme.PANEL, Theme.DEEP), u);
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Theme.TEXT);
-            p.setTextSize(Math.min(tile * 0.46f, 26f * u));
+            p.setTextSize(Math.min(tileSz * 0.46f, 26f * u));
             c.drawText(String.format(loc, "%02d", ev.date.getDayOfMonth()), t.centerX(), t.centerY() + 1f * u, p);
             p.setColor(Theme.AMBER_LIGHT);
-            p.setTextSize(Math.min(tile * 0.26f, 14f * u));
+            p.setTextSize(Math.min(tileSz * 0.26f, 14f * u));
             c.drawText(ev.date.format(DateTimeFormatter.ofPattern("MMM", loc)), t.centerX(), t.bottom - 7f * u, p);
             p.setTextAlign(Paint.Align.LEFT);
 
@@ -241,25 +282,14 @@ final class CalendarRenderer {
             float maxW = w - tx - 14f * u;
             p.setColor(Theme.TEXT);
             p.setTextSize(19f * u);
-            CharSequence title = android.text.TextUtils.ellipsize(Util.capWords(ev.title), new android.text.TextPaint(p),
-                    maxW, android.text.TextUtils.TruncateAt.END);
-            c.drawText(title.toString(), tx, row.centerY() - 3f * u, p);
+            c.drawText(android.text.TextUtils.ellipsize(Util.capWords(ev.title), new android.text.TextPaint(p),
+                    maxW, android.text.TextUtils.TruncateAt.END).toString(), tx, row.centerY() - 3f * u, p);
             p.setColor(Theme.TEXT_SOFT);
             p.setTextSize(14f * u);
             c.drawText(ev.date.format(DateTimeFormatter.ofPattern("EEEE", loc)), tx, row.centerY() + 16f * u, p);
             y += rowH + gap;
         }
         return bmp;
-    }
-
-    private static void border(Canvas c, RectF rect, float radius, float u) {
-        Paint b = new Paint(Paint.ANTI_ALIAS_FLAG);
-        b.setStyle(Paint.Style.STROKE);
-        b.setStrokeWidth(Math.max(1f, 1.2f * u));
-        b.setColor(Theme.BORDER);
-        RectF in = new RectF(rect.left + b.getStrokeWidth() / 2, rect.top + b.getStrokeWidth() / 2,
-                rect.right - b.getStrokeWidth() / 2, rect.bottom - b.getStrokeWidth() / 2);
-        c.drawRoundRect(in, radius, radius, b);
     }
 
     /** Circle with a chevron, like the preset's circle-chevron icons. */

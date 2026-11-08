@@ -34,27 +34,24 @@
                 android:id="@+id/open_card"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="72"
+                android:layout_weight="1"
                 android:contentDescription="@string/cal_name" />
 
             <ImageView
                 android:id="@+id/btn_prev"
-                android:layout_width="0dp"
+                android:layout_width="42dp"
                 android:layout_height="match_parent"
-                android:layout_weight="13"
                 android:contentDescription="Previous event" />
 
             <ImageView
                 android:id="@+id/btn_next"
-                android:layout_width="0dp"
+                android:layout_width="42dp"
                 android:layout_height="match_parent"
-                android:layout_weight="13"
                 android:contentDescription="Next event" />
 
             <ImageView
-                android:layout_width="0dp"
+                android:layout_width="7dp"
                 android:layout_height="match_parent"
-                android:layout_weight="2"
                 android:importantForAccessibility="no" />
         </LinearLayout>
     </LinearLayout>
