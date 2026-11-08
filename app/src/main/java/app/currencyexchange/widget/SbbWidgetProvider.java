@@ -67,7 +67,7 @@ public class SbbWidgetProvider extends AppWidgetProvider {
         int[] ids = widgetIds(ctx);
         if (ids.length == 0) return;
         Bitmap bmp = SbbRenderer.render(System.currentTimeMillis(), zone(ctx), SbbRenderer.SIZE, null, false);
-        RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget);
+        RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_sbb);
         rv.setImageViewBitmap(R.id.img, bmp);
         PendingIntent open = PendingIntent.getActivity(ctx, 10, new Intent(ctx, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
@@ -77,7 +77,7 @@ public class SbbWidgetProvider extends AppWidgetProvider {
 
     /** Cheap picture-only update used by the live second hand. */
     static void pushFrame(Context ctx, int[] ids, Bitmap bmp) {
-        RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget);
+        RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_sbb);
         rv.setImageViewBitmap(R.id.img, bmp);
         AppWidgetManager.getInstance(ctx).partiallyUpdateAppWidget(ids, rv);
     }
