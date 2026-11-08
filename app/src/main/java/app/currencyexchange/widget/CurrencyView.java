@@ -43,7 +43,7 @@ final class CurrencyView {
             R.layout.widget_k4, R.layout.widget_k5, R.layout.widget_k6};
 
     /** Widget height (dp) from which the variant with k rows fits. */
-    static int heightFor(int k) { return 162 + 54 * k; }
+    static int heightFor(int k) { return 136 + 54 * k; }
 
     private static final android.util.LruCache<String, Bitmap> PICS = new android.util.LruCache<>(60);
 

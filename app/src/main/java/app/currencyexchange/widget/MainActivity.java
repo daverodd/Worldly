@@ -117,18 +117,29 @@ public class MainActivity extends Activity {
             rates.addView(row, matchWrap(i == 0 ? 0 : 8));
         }
         final TextView[] addBtn = new TextView[1];
+        final TextView[] removeBtnRef = new TextView[1];
         final Runnable showRows = () -> {
             int n = Store.count(this);
             for (int i = 0; i < 6; i++) fromBtn[i].setVisibility(i < n ? View.VISIBLE : View.INVISIBLE);
             for (int r = 0; r < 3; r++) rateRows[r].setVisibility(r * 2 < n ? View.VISIBLE : View.GONE);
-            addBtn[0].setVisibility(n < 6 ? View.VISIBLE : View.GONE);
+            addBtn[0].setVisibility(n < 6 ? View.VISIBLE : View.INVISIBLE);
+            removeBtnRef[0].setVisibility(n > 1 ? View.VISIBLE : View.INVISIBLE);
         };
-        addBtn[0] = secondaryButton("+  Add currency (up to 6)", v -> {
+        addBtn[0] = secondaryButton("+  Add currency", v -> {
             Store.setCount(this, Store.count(this) + 1);
             refreshNow("Updating rates…");
             showRows.run();
         });
-        rates.addView(addBtn[0], matchWrap(8));
+        final TextView removeBtn = secondaryButton("\u2013  Remove", v -> {
+            Store.setCount(this, Store.count(this) - 1);
+            refreshNow("Updating…");
+            showRows.run();
+        });
+        removeBtnRef[0] = removeBtn;
+        LinearLayout addRemove = hbox();
+        addWeighted(addRemove, addBtn[0], 0);
+        addWeighted(addRemove, removeBtn, 8);
+        rates.addView(addRemove, matchWrap(8));
         showRows.run();
         LinearLayout conv = hbox();
         toBtn = picker(currencyLabel(Store.to(this)), v -> pickCurrency("Convert to", code -> {
