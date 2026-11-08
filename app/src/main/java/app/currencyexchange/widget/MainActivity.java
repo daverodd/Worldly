@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
         head.addView(badge, new LinearLayout.LayoutParams(dp(42), dp(42)));
         LinearLayout titles = vbox();
         titles.setPadding(dp(12), 0, 0, 0);
-        titles.addView(text("Currency Exchange", 19, Theme.uiBold(this), Theme.TEXT));
+        titles.addView(text("Worldly", 19, Theme.uiBold(this), Theme.TEXT));
         titles.addView(text("World clocks · rates · SBB clock · calendar", 12, Theme.uiMedium(this), Theme.MUTED));
         head.addView(titles);
         col.addView(head);
@@ -321,7 +321,7 @@ public class MainActivity extends Activity {
         if (awm != null && awm.isRequestPinAppWidgetSupported()) {
             awm.requestPinAppWidget(new ComponentName(this, provider), null, null);
         } else {
-            Toast.makeText(this, "Long-press your home screen > Widgets > Currency Exchange.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Long-press your home screen > Widgets > Worldly.", Toast.LENGTH_LONG).show();
         }
     }
 

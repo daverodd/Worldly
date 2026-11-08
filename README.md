@@ -1,4 +1,4 @@
-# Currency Exchange widget (standalone Android app)
+# Worldly (standalone Android app: Currency, SBB Clock and Calendar widgets)
 
 A native replacement for the KWGT preset "Currency Exchange". No KWGT, no Sun Surveyor, no API
 keys and no accounts. Install the APK, add the widget, done.
@@ -7,13 +7,13 @@ keys and no accounts. Install the APK, add the widget, done.
 1. Create a private GitHub repo and upload the contents of this folder (keep `.github/workflows/build.yml`
    at the repo root).
 2. Open the **Actions** tab, run **Build APK** (also runs on every push to `main`).
-3. Download the artifact **Currency_Exchange**; the APK is inside.
+3. Download the artifact **Worldly**; the APK inside is `Worldly.apk`.
 
 (Or open the folder in Android Studio and use Build > Build APK.)
 
 ## Install & set up
 1. Install the APK (allow "install unknown apps").
-2. Open **Currency Exchange**, check cities / currencies / fee, tap **Save & refresh**.
+2. Open **Worldly**, check cities / currencies / fee, tap **Save & refresh**.
 3. Tap **Use my location for weather** (or type a home city).
 4. Tap **Add widget to home screen**.
 The status text at the bottom of the settings screen shows what worked and what failed
