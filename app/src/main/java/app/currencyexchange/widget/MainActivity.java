@@ -7,14 +7,15 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -25,59 +26,89 @@ import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** Settings screen: everything that used to be a KWGT global is editable here. */
+/** Settings screen, styled like SAB Monitor (graphite cards, amber accent, Jakarta + Mono type). */
 public class MainActivity extends Activity {
     private final EditText[] city = new EditText[4];
     private final EditText[] from = new EditText[4];
-    private EditText to, fee, home, geoKey, wxKey;
-    private TextView status;
+    private EditText to, fee, home;
+    private TextView banner;
+    private LinearLayout statusBox;
 
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        setTitle("Currency Exchange");
 
         ScrollView sv = new ScrollView(this);
-        LinearLayout col = new LinearLayout(this);
-        col.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(16);
-        col.setPadding(pad, pad, pad, pad);
+        sv.setBackgroundColor(Theme.BG);
+        sv.setFillViewport(true);
+        LinearLayout col = vbox();
+        col.setPadding(dp(16), dp(20), dp(16), dp(28));
         sv.addView(col, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        label(col, "World clocks - 4 cities");
-        for (int i = 0; i < 4; i++) city[i] = edit(col, Store.city(this, i), InputType.TYPE_CLASS_TEXT);
+        // ---- header: amber badge + title (like SAB's drawer header) ----
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView badge = text("FX", 13, Theme.monoBold(this), Theme.AMBER);
+        badge.setGravity(Gravity.CENTER);
+        badge.setBackground(Theme.box(this, 0x26DF8B35, 0x66DF8B35, 12));
+        head.addView(badge, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        LinearLayout titles = vbox();
+        titles.setPadding(dp(12), 0, 0, 0);
+        titles.addView(text("Currency Exchange", 19, Theme.uiBold(this), Theme.TEXT));
+        titles.addView(text("World clocks · rates · weather", 12, Theme.uiMedium(this), Theme.MUTED));
+        head.addView(titles);
+        col.addView(head);
 
-        label(col, "Currencies to convert FROM (3-letter codes)");
-        for (int i = 0; i < 4; i++) {
-            from[i] = edit(col, Store.from(this, i), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
-        }
+        // ---- world clocks ----
+        LinearLayout clocks = card(col, "WORLD CLOCKS");
+        grid(clocks, city, new String[]{Store.city(this, 0), Store.city(this, 1), Store.city(this, 2), Store.city(this, 3)},
+                InputType.TYPE_CLASS_TEXT, false, "City");
 
-        label(col, "Convert TO (your currency)");
-        to = edit(col, Store.to(this), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        // ---- currency rows ----
+        LinearLayout rates = card(col, "CURRENCY ROWS");
+        grid(rates, from, new String[]{Store.from(this, 0), Store.from(this, 1), Store.from(this, 2), Store.from(this, 3)},
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS, true, "Code");
+        LinearLayout conv = hbox();
+        to = input(Store.to(this), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS, true, "Code");
+        fee = input(Store.feeText(this), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL, true, "Fee");
+        addWeighted(conv, labeled("CONVERT TO", to), 0);
+        addWeighted(conv, labeled("VISA FEE %", fee), 8);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cp.topMargin = dp(12);
+        rates.addView(conv, cp);
 
-        label(col, "Visa fee (%)");
-        fee = edit(col, String.valueOf(Store.fee(this)), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        // ---- weather location ----
+        LinearLayout wx = card(col, "WEATHER & SUN LOCATION");
+        home = input(Store.home(this), InputType.TYPE_CLASS_TEXT, false, "Home city (optional)");
+        wx.addView(home, matchWrap(0));
+        TextView hint = text("Leave empty to use your device location.", 12, Theme.uiMedium(this), Theme.DIM);
+        hint.setPadding(dp(2), dp(6), 0, dp(10));
+        wx.addView(hint);
+        wx.addView(secondaryButton("Use my location", v -> useLocation()), matchWrap(0));
 
-        label(col, "Weather / sunrise location: home city (leave empty to use device location)");
-        home = edit(col, Store.home(this), InputType.TYPE_CLASS_TEXT);
+        // ---- actions ----
+        col.addView(primaryButton("Save & refresh", v -> save()), matchWrap(18));
+        col.addView(secondaryButton("Add widget to home screen", v -> pin()), matchWrap(10));
 
-        label(col, "API keys (Geoapify = city lookup, Tomorrow.io = weather)");
-        geoKey = edit(col, Store.geoKey(this), InputType.TYPE_CLASS_TEXT);
-        geoKey.setHint("Geoapify key");
-        wxKey = edit(col, Store.wxKey(this), InputType.TYPE_CLASS_TEXT);
-        wxKey.setHint("Tomorrow.io key");
-
-        button(col, "Save & refresh", v -> save());
-        button(col, "Use my location for weather", v -> useLocation());
-        button(col, "Add widget to home screen", v -> pin());
-
-        status = new TextView(this);
-        status.setPadding(0, dp(12), 0, 0);
-        col.addView(status);
+        // ---- status ----
+        LinearLayout st = card(col, "STATUS");
+        banner = text("", 13, Theme.uiSemi(this), Theme.AMBER);
+        banner.setVisibility(View.GONE);
+        banner.setPadding(0, 0, 0, dp(8));
+        st.addView(banner);
+        statusBox = vbox();
+        st.addView(statusBox);
+        TextView foot = text("Clocks update every minute. Rates and weather refresh about every 30 minutes.",
+                12, Theme.uiMedium(this), Theme.DIM);
+        foot.setPadding(0, dp(10), 0, 0);
+        st.addView(foot);
         updateStatus();
 
         setContentView(sv);
     }
+
+    // ------------------------------------------------------------------ actions
 
     private void save() {
         SharedPreferences.Editor e = Store.sp(this).edit();
@@ -86,20 +117,18 @@ public class MainActivity extends Activity {
             e.putString("from" + i, from[i].getText().toString().trim().toUpperCase(Locale.ROOT));
         }
         e.putString("to", to.getText().toString().trim().toUpperCase(Locale.ROOT));
-        try {
-            e.putFloat("fee", Float.parseFloat(fee.getText().toString().trim()));
-        } catch (NumberFormatException ignored) { }
+        String feeIn = Util.cleanNum(fee.getText().toString());
+        if (!Double.isNaN(Util.parseNum(feeIn))) e.putString("feeTxt", feeIn);
         e.putString("home", home.getText().toString().trim());
-        e.putString("geoKey", geoKey.getText().toString().trim());
-        e.putString("wxKey", wxKey.getText().toString().trim());
         e.apply();
-        refreshNow("Saved. Refreshing...");
+        refreshNow("Saved. Refreshing…");
     }
 
     private void refreshNow(String msg) {
         final Context app = getApplicationContext();
         WidgetProvider.updateAll(app); // instant repaint with whatever is cached
-        status.setText(msg);
+        banner.setText(msg);
+        banner.setVisibility(View.VISIBLE);
         new Thread(() -> {
             Fetcher.refreshAll(app, true);
             WidgetProvider.updateAll(app);
@@ -108,15 +137,24 @@ public class MainActivity extends Activity {
     }
 
     private void updateStatus() {
+        banner.setVisibility(View.GONE);
+        statusBox.removeAllViews();
+
         long t = Store.lastFetch(this);
-        String last = t == 0 ? "never"
+        String last = t == 0 ? null
                 : DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(t));
+        statusRow("Data refresh", last != null, last == null ? "Not refreshed yet" : "Last successful: " + last);
+
         String visaErr = Store.sp(this).getString("visaErr", "");
+        statusRow("Visa rate", visaErr.isEmpty(),
+                visaErr.isEmpty() ? "Live rate from Visa" : visaErr);
+
         String wxErr = Store.sp(this).getString("wxErr", "");
-        status.setText("Last successful data refresh: " + last
-                + "\nData also refreshes automatically about every 30 minutes; clocks update every minute."
-                + (visaErr.isEmpty() ? "\nVisa rate: OK" : "\nVisa rate problem: " + visaErr)
-                + (wxErr.isEmpty() ? "\nWeather: OK" : "\nWeather problem: " + wxErr));
+        statusRow("Weather", wxErr.isEmpty() && Store.weather(this) != null,
+                !wxErr.isEmpty() ? wxErr : (Store.weather(this) == null ? "Waiting for first update" : "Open-Meteo"));
+
+        String geoErr = Store.sp(this).getString("geoErr", "");
+        statusRow("Cities", geoErr.isEmpty(), geoErr.isEmpty() ? "All cities found" : geoErr);
     }
 
     // ---- location ----
@@ -170,7 +208,7 @@ public class MainActivity extends Activity {
 
     private void saveLocation(Location l) {
         Store.setDeviceLocation(this, l.getLatitude(), l.getLongitude());
-        refreshNow(String.format(Locale.US, "Location saved (%.2f, %.2f). Refreshing...", l.getLatitude(), l.getLongitude()));
+        refreshNow(String.format(Locale.US, "Location saved (%.2f, %.2f). Refreshing…", l.getLatitude(), l.getLongitude()));
     }
 
     // ---- pin widget ----
@@ -184,31 +222,133 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ---- tiny UI helpers ----
+    // ------------------------------------------------------------------ UI building blocks
 
-    private int dp(int v) { return Math.round(v * getResources().getDisplayMetrics().density); }
+    private int dp(int v) { return Math.round(Theme.dp(this, v)); }
 
-    private void label(LinearLayout p, String s) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(13);
-        t.setPadding(0, dp(14), 0, dp(2));
-        p.addView(t);
+    private LinearLayout vbox() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        return l;
     }
 
-    private EditText edit(LinearLayout p, String value, int inputType) {
-        EditText e = new EditText(this);
+    private LinearLayout hbox() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.HORIZONTAL);
+        return l;
+    }
+
+    private LinearLayout.LayoutParams matchWrap(int topDp) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(topDp);
+        return lp;
+    }
+
+    private TextView text(String s, float sp, Typeface tf, int color) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextSize(sp);
+        t.setTypeface(tf);
+        t.setTextColor(color);
+        return t;
+    }
+
+    /** SAB-style panel: #11141e fill, thin slate border, 16dp corners, small caps section title. */
+    private LinearLayout card(LinearLayout parent, String title) {
+        LinearLayout c = vbox();
+        c.setBackground(Theme.box(this, Theme.PANEL, Theme.BORDER_SOFT, 16));
+        c.setPadding(dp(14), dp(14), dp(14), dp(14));
+        TextView t = text(title, 11, Theme.uiBold(this), Theme.MUTED);
+        t.setLetterSpacing(0.1f);
+        t.setPadding(dp(2), 0, 0, dp(10));
+        c.addView(t);
+        parent.addView(c, matchWrap(14));
+        return c;
+    }
+
+    /** Dark input with slate border that turns amber on focus. */
+    private EditText input(String value, int inputType, boolean mono, String hint) {
+        final EditText e = new EditText(this);
         e.setInputType(inputType);
         e.setSingleLine(true);
         e.setText(value);
-        p.addView(e, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        e.setHint(hint);
+        e.setTextSize(14);
+        e.setTypeface(mono ? Theme.monoMedium(this) : Theme.uiMedium(this));
+        e.setTextColor(Theme.TEXT);
+        e.setHintTextColor(Theme.DIM);
+        e.setHighlightColor(0x55DF8B35);
+        e.setPadding(dp(12), dp(11), dp(12), dp(11));
+        e.setBackground(Theme.box(this, Theme.SURFACE, Theme.BORDER, 12));
+        e.setOnFocusChangeListener((v, focused) ->
+                e.setBackground(Theme.box(this, Theme.SURFACE, focused ? Theme.AMBER : Theme.BORDER, 12)));
         return e;
     }
 
-    private void button(LinearLayout p, String s, View.OnClickListener l) {
-        Button bt = new Button(this);
-        bt.setText(s);
-        bt.setOnClickListener(l);
-        p.addView(bt, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    /** Two inputs per row. */
+    private void grid(LinearLayout card, EditText[] out, String[] values, int type, boolean mono, String hintPrefix) {
+        for (int i = 0; i < out.length; i += 2) {
+            LinearLayout row = hbox();
+            for (int j = 0; j < 2 && i + j < out.length; j++) {
+                out[i + j] = input(values[i + j], type, mono, hintPrefix + " " + (i + j + 1));
+                addWeighted(row, out[i + j], j == 0 ? 0 : 8);
+            }
+            card.addView(row, matchWrap(i == 0 ? 0 : 8));
+        }
+    }
+
+    private void addWeighted(LinearLayout row, View v, int leftMarginDp) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        lp.leftMargin = dp(leftMarginDp);
+        row.addView(v, lp);
+    }
+
+    private LinearLayout labeled(String label, EditText e) {
+        LinearLayout l = vbox();
+        TextView t = text(label, 10, Theme.uiBold(this), Theme.DIM);
+        t.setLetterSpacing(0.1f);
+        t.setPadding(dp(2), 0, 0, dp(4));
+        l.addView(t);
+        l.addView(e, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return l;
+    }
+
+    /** SAB's active-tab look: orange gradient, white bold text. */
+    private TextView primaryButton(String label, View.OnClickListener l) {
+        TextView b = text(label, 15, Theme.uiBold(this), 0xFFFFFFFF);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(16), dp(14), dp(16), dp(14));
+        b.setBackground(Theme.pressable(Theme.amberGradient(this, 16, false), Theme.amberGradient(this, 16, true)));
+        b.setClickable(true);
+        b.setOnClickListener(l);
+        return b;
+    }
+
+    /** SAB's inactive-tab look: #151922 with slate border. */
+    private TextView secondaryButton(String label, View.OnClickListener l) {
+        TextView b = text(label, 14, Theme.uiSemi(this), Theme.TEXT_SOFT);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(16), dp(13), dp(16), dp(13));
+        b.setBackground(Theme.pressable(Theme.box(this, Theme.SURFACE, Theme.BORDER, 16),
+                Theme.box(this, Theme.SURFACE_HI, Theme.BORDER, 16)));
+        b.setClickable(true);
+        b.setOnClickListener(l);
+        return b;
+    }
+
+    /** Colored dot + name + detail. Green = OK, amber = needs attention. */
+    private void statusRow(String name, boolean ok, String detail) {
+        LinearLayout row = hbox();
+        row.setPadding(0, dp(6), 0, dp(6));
+        TextView dot = text("●", 12, Typeface.DEFAULT, ok ? Theme.GREEN : Theme.AMBER);
+        dot.setPadding(0, dp(3), dp(10), 0);
+        row.addView(dot);
+        LinearLayout txt = vbox();
+        txt.addView(text(name, 14, Theme.uiSemi(this), Theme.TEXT));
+        TextView d = text(detail, 12, Theme.uiMedium(this), Theme.MUTED);
+        d.setPadding(0, dp(1), 0, 0);
+        txt.addView(d);
+        row.addView(txt, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        statusBox.addView(row);
     }
 }

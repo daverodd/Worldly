@@ -22,10 +22,13 @@ final class Store {
     static String city(Context c, int i) { return sp(c).getString("city" + i, DEF_CITIES[i]); }
     static String from(Context c, int i) { return sp(c).getString("from" + i, DEF_FROM[i]); }
     static String to(Context c) { return sp(c).getString("to", "COP"); }
-    static float fee(Context c) { return sp(c).getFloat("fee", 2.0f); }
+    /** Visa fee as plain text, never with a trailing ".0" ("2", not "2.0"). */
+    static String feeText(Context c) { return Util.cleanNum(sp(c).getString("feeTxt", "2")); }
+    static double fee(Context c) {
+        double v = Util.parseNum(feeText(c));
+        return Double.isNaN(v) ? 2.0 : v;
+    }
     static String home(Context c) { return sp(c).getString("home", ""); }
-    static String geoKey(Context c) { return sp(c).getString("geoKey", BuildConfig.GEOAPIFY_KEY); }
-    static String wxKey(Context c) { return sp(c).getString("wxKey", BuildConfig.TOMORROW_KEY); }
 
     static void setDeviceLocation(Context c, double lat, double lon) {
         sp(c).edit().putString("devLat", String.valueOf(lat)).putString("devLon", String.valueOf(lon)).apply();

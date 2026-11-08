@@ -35,7 +35,9 @@ final class Flags {
         if (cc == null || cc.length() != 2) return;
         File f = flagFile(c, cc);
         if (f.exists() && f.length() > 0) return;
-        download(FLAG_URL + cc.toUpperCase(Locale.ROOT) + ".png", f);
+        if (!download(FLAG_URL + cc.toUpperCase(Locale.ROOT) + ".png", f)) {
+            download("https://flagcdn.com/w320/" + cc.toLowerCase(Locale.ROOT) + ".png", f); // free mirror
+        }
     }
 
     static void ensureVisa(Context c) {
@@ -44,11 +46,13 @@ final class Flags {
         download(VISA_URL, f);
     }
 
-    private static void download(String url, File dest) {
+    private static boolean download(String url, File dest) {
         try {
             byte[] b = Net.getBytes(url);
             try (FileOutputStream o = new FileOutputStream(dest)) { o.write(b); }
+            return true;
         } catch (Exception ignored) { /* retried on next refresh */ }
+        return false;
     }
 
     static synchronized Bitmap flag(Context c, String cc) {

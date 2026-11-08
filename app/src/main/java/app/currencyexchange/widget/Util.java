@@ -46,6 +46,18 @@ final class Util {
         }
     }
 
+    /** "2.0" -> "2", "2.50" -> "2.5", "2,5" -> "2.5", "" -> "2" (default fee). Plain text, no forced decimals. */
+    static String cleanNum(String s) {
+        if (s == null) return "2";
+        String t = s.trim().replace(',', '.');
+        if (t.isEmpty()) return "2";
+        if (t.indexOf('.') >= 0) {
+            t = t.replaceAll("0+$", "");
+            if (t.endsWith(".")) t = t.substring(0, t.length() - 1);
+        }
+        return t.isEmpty() ? "0" : t;
+    }
+
     /** "3,281" style, no decimals; "--" when unknown. */
     static String fmt0(double v) {
         if (Double.isNaN(v) || Double.isInfinite(v)) return "--";
