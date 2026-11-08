@@ -53,8 +53,8 @@ final class TextBmp {
     }
 
     /**
-     * Tight text picture: from the top of the capitals to just below the baseline (room for a comma), sized in dp
-     * (2.5 px per dp), so layouts can align baselines and cap tops exactly with wrap_content.
+     * Tight text picture: from the top of the capitals to just below the baseline (room for a comma). Height is
+     * 0.82 x the font size, so an ImageView 0.82 x sizeDp tall shows it at exactly sizeDp.
      */
     static Bitmap tight(Typeface tf, float sizeDp, String s, int color) {
         String key = "T|" + System.identityHashCode(tf) + "|" + sizeDp + "|" + color + "|" + s;
@@ -74,7 +74,6 @@ final class TextBmp {
         int w = Math.max(2, (int) Math.ceil(p.measureText(s == null ? "" : s) + 2 * pad));
         Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         new Canvas(b).drawText(s == null ? "" : s, pad, top + pad, p);
-        b.setDensity(400); // 2.5 px per dp
         CACHE.put(key, b);
         return b;
     }
