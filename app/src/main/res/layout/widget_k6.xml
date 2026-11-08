@@ -350,7 +350,7 @@
                     <ImageView
                         android:id="@+id/mkt_val_0"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_0"
@@ -368,7 +368,7 @@
                     <ImageView
                         android:id="@+id/visa_val_0"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_0"
@@ -443,7 +443,7 @@
                     <ImageView
                         android:id="@+id/mkt_val_1"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_1"
@@ -461,7 +461,7 @@
                     <ImageView
                         android:id="@+id/visa_val_1"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_1"
@@ -536,7 +536,7 @@
                     <ImageView
                         android:id="@+id/mkt_val_2"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_2"
@@ -554,7 +554,7 @@
                     <ImageView
                         android:id="@+id/visa_val_2"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_2"
@@ -629,7 +629,7 @@
                     <ImageView
                         android:id="@+id/mkt_val_3"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_3"
@@ -647,7 +647,7 @@
                     <ImageView
                         android:id="@+id/visa_val_3"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_3"
@@ -722,7 +722,7 @@
                     <ImageView
                         android:id="@+id/mkt_val_4"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_4"
@@ -740,7 +740,7 @@
                     <ImageView
                         android:id="@+id/visa_val_4"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_4"
@@ -815,7 +815,7 @@
                     <ImageView
                         android:id="@+id/mkt_val_5"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_5"
@@ -833,7 +833,7 @@
                     <ImageView
                         android:id="@+id/visa_val_5"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_5"

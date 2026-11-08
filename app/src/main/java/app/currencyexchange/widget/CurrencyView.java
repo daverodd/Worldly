@@ -55,6 +55,9 @@ final class CurrencyView {
     /** The size the clock city names actually show at (11 drawn into a 16 dp box with Carbon+'s 0.95 em line). */
     private static final float CITY_SP = 16f * 0.8f / 0.95f * 0.985f;
 
+    /** The size the weather-bar numbers (humidity etc.) show at: 12 drawn into an 18 dp box. */
+    private static final float HEADER_SP = 12f / 0.82f;
+
     static RemoteViews build(Context ctx, int k) {
         Typeface reg = Theme.uiMedium(ctx), bold = Theme.uiBold(ctx);
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), LAYOUTS[k - 1]);
@@ -120,17 +123,17 @@ final class CurrencyView {
             txt(ctx, rv, id(ctx, "code_b_" + i), to, reg, Theme.TEXT, 15, false);
             double market = Store.rate(ctx, from, to);
             rv.setImageViewBitmap(id(ctx, "mkt_lbl_" + i), TextBmp.tight(reg, CITY_SP, "Market", Theme.MUTED));
-            rv.setImageViewBitmap(id(ctx, "mkt_val_" + i), TextBmp.tight(reg, CITY_SP, Util.fmt0(market), Theme.TEXT));
+            rv.setImageViewBitmap(id(ctx, "mkt_val_" + i), TextBmp.tight(reg, HEADER_SP, Util.fmt0(market), Theme.TEXT));
             rv.setImageViewBitmap(id(ctx, "visa_logo_" + i), visaLogo);
             double visa = Util.alignToMarket(Store.visa(ctx, from, to), market);
             int vv = id(ctx, "visa_val_" + i);
             if (!Double.isNaN(visa)) {
-                rv.setImageViewBitmap(vv, TextBmp.tight(reg, CITY_SP, Util.fmt0(visa), Theme.TEXT_SOFT));
+                rv.setImageViewBitmap(vv, TextBmp.tight(reg, HEADER_SP, Util.fmt0(visa), Theme.TEXT_SOFT));
             } else if (!Double.isNaN(market)) {
                 // Visa did not answer: estimate = market + fee, marked "~" and muted
-                rv.setImageViewBitmap(vv, TextBmp.tight(reg, CITY_SP, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), Theme.MUTED));
+                rv.setImageViewBitmap(vv, TextBmp.tight(reg, HEADER_SP, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), Theme.MUTED));
             } else {
-                rv.setImageViewBitmap(vv, TextBmp.tight(reg, CITY_SP, "", Theme.MUTED));
+                rv.setImageViewBitmap(vv, TextBmp.tight(reg, HEADER_SP, "", Theme.MUTED));
             }
         }
         return rv;

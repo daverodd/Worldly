@@ -350,7 +350,7 @@
                     <ImageView
                         android:id="@+id/mkt_val_0"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_0"
@@ -368,7 +368,7 @@
                     <ImageView
                         android:id="@+id/visa_val_0"
                         android:layout_width="52dp"
-                        android:layout_height="11dp"
+                        android:layout_height="12dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_0"
