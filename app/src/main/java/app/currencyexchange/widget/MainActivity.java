@@ -236,12 +236,23 @@ public class MainActivity extends Activity {
             List<String> need = new ArrayList<>();
             if (!Locator.allowed(this)) need.add(Manifest.permission.ACCESS_COARSE_LOCATION);
             if (!CalendarData.allowed(this)) need.add(Manifest.permission.READ_CALENDAR);
-            if (Build.VERSION.SDK_INT >= 33
-                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                need.add(Manifest.permission.POST_NOTIFICATIONS);
-            }
             if (!need.isEmpty()) requestPermissions(need.toArray(new String[0]), REQ_ALL);
+            else askBackground();
+        } else {
+            askBackground(); // installs from before this was asked get asked once too
         }
+    }
+
+    /** Once, right after the other permissions: let the clocks run in the background (battery optimisation off). */
+    private void askBackground() {
+        if (Store.sp(this).getBoolean("batAsked", false)) return;
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (pm == null || pm.isIgnoringBatteryOptimizations(getPackageName())) return;
+        Store.sp(this).edit().putBoolean("batAsked", true).apply();
+        try {
+            startActivity(new android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    android.net.Uri.parse("package:" + getPackageName())));
+        } catch (Exception ignored) { }
     }
 
     @Override
@@ -262,6 +273,7 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
         super.onRequestPermissionsResult(code, perms, results);
         updatePermissionCards();
+        askBackground();
         Context app = getApplicationContext();
         CalendarWidgetProvider.updateAll(app);
         if (Locator.allowed(this)) {
