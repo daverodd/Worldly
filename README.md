@@ -19,6 +19,16 @@ keys and no accounts. Install the APK, add the widget, done.
 The status text at the bottom of the settings screen shows what worked and what failed
 (cities, Visa, weather).
 
+## Widgets (3)
+
+| Widget | What it is |
+|---|---|
+| **Currency Exchange** | World clocks, weather, market + Visa rates (the original KWGT widget) |
+| **SBB Clock** | Swiss railway station clock. Second hand: one lap in 58.5 s, then waits at 12; the minute hand (and the hour hand with it) steps on the minute impulse, exactly when the second hand starts its next lap |
+| **Calendar** | Week strip (Sunday to Saturday, today highlighted) and your next 5 events with prev/next arrows. Reads the device calendar (READ_CALENDAR), no account or key |
+
+SBB clock second hand: a widget cannot animate itself, so in "Smooth" (about 10 pictures a second) and "Every second" modes a small foreground service redraws it while the screen is on and stops when the screen turns off. "Minute only" uses no service. Fonts: Carbon+ (Currency) and Futura Medium BT (Calendar), both from the original KWGT presets.
+
 ## Data sources (all free, no key, no account)
 | Data | Source |
 |---|---|

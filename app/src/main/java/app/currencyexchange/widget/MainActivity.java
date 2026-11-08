@@ -30,8 +30,12 @@ import java.util.Locale;
 public class MainActivity extends Activity {
     private final EditText[] city = new EditText[4];
     private final EditText[] from = new EditText[4];
-    private EditText to, fee, home;
-    private TextView banner;
+    private EditText to, fee, home, sbbTz;
+    private String sbbMode;
+    private final TextView[] modeBtn = new TextView[3];
+    private static final String[] MODES = {"smooth", "second", "minute"};
+    private static final String[] MODE_LABELS = {"Smooth", "Every second", "Minute only"};
+    private TextView banner, calStatus, calButton;
     private LinearLayout statusBox;
 
     @Override
@@ -87,9 +91,46 @@ public class MainActivity extends Activity {
         wx.addView(hint);
         wx.addView(secondaryButton("Use my location", v -> useLocation()), matchWrap(0));
 
+        // ---- SBB clock ----
+        LinearLayout sbb = card(col, "SBB CLOCK");
+        sbbTz = input(Store.sbbTz(this), InputType.TYPE_CLASS_TEXT, true, "Time zone, e.g. Europe/Zurich (optional)");
+        sbb.addView(sbbTz, matchWrap(0));
+        TextView sbbHint = text("Leave empty to follow your device. Second hand: runs a lap in 58.5 s, waits at 12 and the "
+                + "minute hand steps on the minute, like the real station clock.", 12, Theme.uiMedium(this), Theme.DIM);
+        sbbHint.setPadding(dp(2), dp(6), 0, dp(10));
+        sbb.addView(sbbHint);
+        sbbMode = Store.sbbMode(this);
+        LinearLayout modes = hbox();
+        for (int i = 0; i < 3; i++) {
+            final String m = MODES[i];
+            modeBtn[i] = text(MODE_LABELS[i], 13, Theme.uiSemi(this), Theme.TEXT_SOFT);
+            modeBtn[i].setGravity(Gravity.CENTER);
+            modeBtn[i].setPadding(dp(6), dp(11), dp(6), dp(11));
+            modeBtn[i].setClickable(true);
+            modeBtn[i].setOnClickListener(v -> { sbbMode = m; paintModes(); });
+            addWeighted(modes, modeBtn[i], i == 0 ? 0 : 8);
+        }
+        sbb.addView(modes, matchWrap(0));
+        paintModes();
+        TextView modeHint = text("Smooth and Every second need a small background service while the screen is on (an "
+                + "ongoing notification appears). Minute only uses no service.", 12, Theme.uiMedium(this), Theme.DIM);
+        modeHint.setPadding(dp(2), dp(8), 0, 0);
+        sbb.addView(modeHint);
+
+        // ---- calendar ----
+        LinearLayout cal = card(col, "CALENDAR");
+        calStatus = text("", 13, Theme.uiSemi(this), Theme.TEXT);
+        cal.addView(calStatus);
+        calButton = secondaryButton("Allow calendar access", v ->
+                requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, 2));
+        cal.addView(calButton, matchWrap(10));
+        updateCalendarCard();
+
         // ---- actions ----
         col.addView(primaryButton("Save & refresh", v -> save()), matchWrap(18));
-        col.addView(secondaryButton("Add widget to home screen", v -> pin()), matchWrap(10));
+        col.addView(secondaryButton("Add Currency widget", v -> pin(WidgetProvider.class)), matchWrap(10));
+        col.addView(secondaryButton("Add SBB clock widget", v -> pin(SbbWidgetProvider.class)), matchWrap(8));
+        col.addView(secondaryButton("Add Calendar widget", v -> pin(CalendarWidgetProvider.class)), matchWrap(8));
 
         // ---- status ----
         LinearLayout st = card(col, "STATUS");
@@ -99,7 +140,7 @@ public class MainActivity extends Activity {
         st.addView(banner);
         statusBox = vbox();
         st.addView(statusBox);
-        TextView foot = text("Clocks update every minute. Rates and weather refresh about every 30 minutes.",
+        TextView foot = text("World clocks update every minute. Rates and weather refresh about every 30 minutes.",
                 12, Theme.uiMedium(this), Theme.DIM);
         foot.setPadding(0, dp(10), 0, 0);
         st.addView(foot);
@@ -120,13 +161,28 @@ public class MainActivity extends Activity {
         String feeIn = Util.cleanNum(fee.getText().toString());
         if (!Double.isNaN(Util.parseNum(feeIn))) e.putString("feeTxt", feeIn);
         e.putString("home", home.getText().toString().trim());
+        String tz = sbbTz.getText().toString().trim();
+        boolean tzOk = true;
+        if (!tz.isEmpty()) {
+            try { java.time.ZoneId.of(tz); } catch (java.time.DateTimeException ex) { tzOk = false; }
+        }
+        e.putString("sbbTz", tzOk ? tz : "");
+        e.putString("sbbMode", sbbMode);
         e.apply();
+        if (!tzOk) Toast.makeText(this, "Unknown time zone \"" + tz + "\" - using the device's.", Toast.LENGTH_LONG).show();
+        if (Build.VERSION.SDK_INT >= 33 && !"minute".equals(sbbMode)
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 3);
+        }
         refreshNow("Saved. Refreshing…");
     }
 
     private void refreshNow(String msg) {
         final Context app = getApplicationContext();
         WidgetProvider.updateAll(app); // instant repaint with whatever is cached
+        SbbWidgetProvider.updateAll(app);
+        CalendarWidgetProvider.updateAll(app);
+        SbbService.ensure(app);
         banner.setText(msg);
         banner.setVisibility(View.VISIBLE);
         new Thread(() -> {
@@ -168,8 +224,21 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        updateCalendarCard();
+        SbbService.ensure(getApplicationContext()); // the app is in front, so Android lets the service start
+    }
+
+    @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
         super.onRequestPermissionsResult(code, perms, results);
+        if (code == 2) {
+            updateCalendarCard();
+            CalendarWidgetProvider.updateAll(getApplicationContext());
+            return;
+        }
+        if (code == 3) return; // notification permission: only affects whether the notification is visible
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) fetchLocation();
         else Toast.makeText(this, "Permission denied - type a home city instead.", Toast.LENGTH_LONG).show();
     }
@@ -213,13 +282,31 @@ public class MainActivity extends Activity {
 
     // ---- pin widget ----
 
-    private void pin() {
+    private void pin(Class<?> provider) {
         AppWidgetManager awm = getSystemService(AppWidgetManager.class);
         if (awm != null && awm.isRequestPinAppWidgetSupported()) {
-            awm.requestPinAppWidget(new ComponentName(this, WidgetProvider.class), null, null);
+            awm.requestPinAppWidget(new ComponentName(this, provider), null, null);
         } else {
             Toast.makeText(this, "Long-press your home screen > Widgets > Currency Exchange.", Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void paintModes() {
+        for (int i = 0; i < 3; i++) {
+            boolean on = MODES[i].equals(sbbMode);
+            modeBtn[i].setTextColor(on ? 0xFFFFFFFF : Theme.TEXT_SOFT);
+            modeBtn[i].setBackground(on
+                    ? Theme.amberGradient(this, 14, false)
+                    : Theme.box(this, Theme.SURFACE, Theme.BORDER, 14));
+        }
+    }
+
+    private void updateCalendarCard() {
+        boolean ok = CalendarData.allowed(this);
+        calStatus.setText(ok ? "Calendar access allowed - showing your next 5 events."
+                : "Needs permission to read your calendar. Events never leave your phone.");
+        calStatus.setTextColor(ok ? Theme.TEXT : Theme.AMBER);
+        calButton.setVisibility(ok ? View.GONE : View.VISIBLE);
     }
 
     // ------------------------------------------------------------------ UI building blocks

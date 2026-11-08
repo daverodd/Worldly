@@ -29,6 +29,13 @@ final class Store {
         return Double.isNaN(v) ? 2.0 : v;
     }
     static String home(Context c) { return sp(c).getString("home", ""); }
+    /** SBB clock: IANA zone id typed in settings, empty = device time zone. */
+    static String sbbTz(Context c) { return sp(c).getString("sbbTz", "").trim(); }
+    /** SBB clock second hand: "smooth" (about 10 pictures a second), "second" (1 a second) or "minute" (none). */
+    static String sbbMode(Context c) { return sp(c).getString("sbbMode", "smooth"); }
+    /** Calendar widget: which of the next 5 events is shown. */
+    static int calIdx(Context c) { return sp(c).getInt("calIdx", 0); }
+    static void setCalIdx(Context c, int i) { sp(c).edit().putInt("calIdx", i).apply(); }
 
     static void setDeviceLocation(Context c, double lat, double lon) {
         sp(c).edit().putString("devLat", String.valueOf(lat)).putString("devLon", String.valueOf(lon)).apply();

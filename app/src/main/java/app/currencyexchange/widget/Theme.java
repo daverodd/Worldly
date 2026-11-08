@@ -37,7 +37,7 @@ final class Theme {
     static final int AMBER_LIGHT = 0xFFF0A04B;
     static final int GREEN = 0xFF16A34A;
 
-    private static Typeface uiMedium, uiSemi, uiBold, monoMedium, monoSemi, monoBold;
+    private static Typeface uiMedium, uiSemi, uiBold, monoMedium, monoSemi, monoBold, futura;
 
     private static synchronized void init(Context c) {
         if (uiMedium != null) return;
@@ -60,6 +60,12 @@ final class Theme {
         } catch (Exception e) {
             return fallback;
         }
+    }
+
+    /** The Calendar preset's own font (Futura Medium BT), bundled from the KWGT file. */
+    static synchronized Typeface futura(Context c) {
+        if (futura == null) futura = load(c.getApplicationContext(), "fonts/futura-medium-bt.ttf", Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        return futura;
     }
 
     static Typeface uiMedium(Context c) { init(c); return uiMedium; }

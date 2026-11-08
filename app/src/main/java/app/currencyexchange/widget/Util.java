@@ -93,4 +93,10 @@ final class Util {
         if (minutes < 0) return "--:--";
         return String.format(Locale.US, "%d:%02d", (minutes / 60) % 24, minutes % 60);
     }
+
+    /** KWGT $tc(ell, text, n)$: cut to n characters and end with an ellipsis. */
+    static String ellipsize(String s, int n) {
+        if (s == null || s.length() <= n) return s == null ? "" : s;
+        return s.substring(0, n).trim() + "\u2026";
+    }
 }
