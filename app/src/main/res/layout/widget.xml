@@ -19,22 +19,12 @@
             android:orientation="horizontal"
             android:paddingStart="10dp"
             android:paddingEnd="10dp">
-            <TextView
+            <ImageView
                 android:id="@+id/hdr_feels"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="15"
-                android:autoSizeMaxTextSize="14sp"
-                android:autoSizeMinTextSize="6sp"
-                android:autoSizeStepGranularity="0.5sp"
-                android:autoSizeTextType="uniform"
-                android:ellipsize="end"
-                android:fontFamily="@font/carbonplus_regular"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:maxLines="1"
-                android:textColor="#FFF1F5F9"
-                />
+                android:scaleType="fitCenter" />
 
             <ImageView
                 android:id="@+id/sep0"
@@ -51,22 +41,12 @@
                 
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_drop" />
-            <TextView
+            <ImageView
                 android:id="@+id/hdr_hum"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="4"
-                android:autoSizeMaxTextSize="14sp"
-                android:autoSizeMinTextSize="6sp"
-                android:autoSizeStepGranularity="0.5sp"
-                android:autoSizeTextType="uniform"
-                android:ellipsize="end"
-                android:fontFamily="@font/carbonplus_regular"
-                android:gravity="center|start"
-                android:includeFontPadding="false"
-                android:maxLines="1"
-                android:textColor="#FFF1F5F9"
-                android:paddingStart="3dp" />
+                android:scaleType="fitStart" />
 
             <ImageView
                 android:id="@+id/sep1"
@@ -83,22 +63,12 @@
                 
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_sunrise" />
-            <TextView
+            <ImageView
                 android:id="@+id/hdr_rise"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="6"
-                android:autoSizeMaxTextSize="14sp"
-                android:autoSizeMinTextSize="6sp"
-                android:autoSizeStepGranularity="0.5sp"
-                android:autoSizeTextType="uniform"
-                android:ellipsize="end"
-                android:fontFamily="@font/carbonplus_regular"
-                android:gravity="center|start"
-                android:includeFontPadding="false"
-                android:maxLines="1"
-                android:textColor="#FFF1F5F9"
-                android:paddingStart="3dp" />
+                android:scaleType="fitStart" />
 
             <ImageView
                 android:id="@+id/sep2"
@@ -115,22 +85,12 @@
                 
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_sunset" />
-            <TextView
+            <ImageView
                 android:id="@+id/hdr_set"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="6"
-                android:autoSizeMaxTextSize="14sp"
-                android:autoSizeMinTextSize="6sp"
-                android:autoSizeStepGranularity="0.5sp"
-                android:autoSizeTextType="uniform"
-                android:ellipsize="end"
-                android:fontFamily="@font/carbonplus_regular"
-                android:gravity="center|start"
-                android:includeFontPadding="false"
-                android:maxLines="1"
-                android:textColor="#FFF1F5F9"
-                android:paddingStart="3dp" />
+                android:scaleType="fitStart" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -159,54 +119,24 @@
                     android:paddingEnd="2dp"
                     android:paddingTop="8dp"
                     android:paddingBottom="12dp">
-                    <TextView
+                    <ImageView
                         android:id="@+id/clk_day_0"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_time_0"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1.7"
-                        android:autoSizeMaxTextSize="26sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_bold"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_city_0"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="13sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
+                        android:scaleType="fitCenter" />
                 </LinearLayout>
             </FrameLayout>
             <FrameLayout
@@ -228,54 +158,24 @@
                     android:paddingEnd="2dp"
                     android:paddingTop="8dp"
                     android:paddingBottom="12dp">
-                    <TextView
+                    <ImageView
                         android:id="@+id/clk_day_1"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_time_1"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1.7"
-                        android:autoSizeMaxTextSize="26sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_bold"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_city_1"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="13sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
+                        android:scaleType="fitCenter" />
                 </LinearLayout>
             </FrameLayout>
             <FrameLayout
@@ -297,54 +197,24 @@
                     android:paddingEnd="2dp"
                     android:paddingTop="8dp"
                     android:paddingBottom="12dp">
-                    <TextView
+                    <ImageView
                         android:id="@+id/clk_day_2"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_time_2"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1.7"
-                        android:autoSizeMaxTextSize="26sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_bold"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_city_2"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="13sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
+                        android:scaleType="fitCenter" />
                 </LinearLayout>
             </FrameLayout>
             <FrameLayout
@@ -366,54 +236,24 @@
                     android:paddingEnd="2dp"
                     android:paddingTop="8dp"
                     android:paddingBottom="12dp">
-                    <TextView
+                    <ImageView
                         android:id="@+id/clk_day_3"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_time_3"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1.7"
-                        android:autoSizeMaxTextSize="26sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_bold"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
-                    <TextView
+                        android:scaleType="fitCenter" />
+                    <ImageView
                         android:id="@+id/clk_city_3"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="13sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        android:shadowColor="#99000000" android:shadowDy="2" android:shadowRadius="5" />
+                        android:scaleType="fitCenter" />
                 </LinearLayout>
             </FrameLayout>
         </LinearLayout>
@@ -443,22 +283,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_a_0"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
                 <ImageView
                     android:id="@+id/arrow_0"
                     android:layout_width="0dp"
@@ -473,22 +303,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_b_0"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
             </LinearLayout>
 
             <LinearLayout
@@ -504,38 +324,18 @@
                     android:layout_weight="1"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
-                    <TextView
+                    <ImageView
                         android:id="@+id/mkt_lbl_0"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|start"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FF8A9BB2"
-                        />
-                    <TextView
+                        android:scaleType="fitStart" />
+                    <ImageView
                         android:id="@+id/mkt_val_0"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="18sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -551,22 +351,12 @@
                         android:layout_weight="1"
                         android:scaleType="fitStart"
                          android:paddingTop="3dp" android:paddingBottom="3dp" />
-                    <TextView
+                    <ImageView
                         android:id="@+id/visa_val_0"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="15sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
@@ -596,22 +386,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_a_1"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
                 <ImageView
                     android:id="@+id/arrow_1"
                     android:layout_width="0dp"
@@ -626,22 +406,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_b_1"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
             </LinearLayout>
 
             <LinearLayout
@@ -657,38 +427,18 @@
                     android:layout_weight="1"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
-                    <TextView
+                    <ImageView
                         android:id="@+id/mkt_lbl_1"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|start"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FF8A9BB2"
-                        />
-                    <TextView
+                        android:scaleType="fitStart" />
+                    <ImageView
                         android:id="@+id/mkt_val_1"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="18sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -704,22 +454,12 @@
                         android:layout_weight="1"
                         android:scaleType="fitStart"
                          android:paddingTop="3dp" android:paddingBottom="3dp" />
-                    <TextView
+                    <ImageView
                         android:id="@+id/visa_val_1"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="15sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
@@ -749,22 +489,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_a_2"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
                 <ImageView
                     android:id="@+id/arrow_2"
                     android:layout_width="0dp"
@@ -779,22 +509,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_b_2"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
             </LinearLayout>
 
             <LinearLayout
@@ -810,38 +530,18 @@
                     android:layout_weight="1"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
-                    <TextView
+                    <ImageView
                         android:id="@+id/mkt_lbl_2"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|start"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FF8A9BB2"
-                        />
-                    <TextView
+                        android:scaleType="fitStart" />
+                    <ImageView
                         android:id="@+id/mkt_val_2"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="18sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -857,22 +557,12 @@
                         android:layout_weight="1"
                         android:scaleType="fitStart"
                          android:paddingTop="3dp" android:paddingBottom="3dp" />
-                    <TextView
+                    <ImageView
                         android:id="@+id/visa_val_2"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="15sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
@@ -902,22 +592,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_a_3"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
                 <ImageView
                     android:id="@+id/arrow_3"
                     android:layout_width="0dp"
@@ -932,22 +612,12 @@
                     android:layout_weight="7"
                     android:scaleType="fitCenter"
                      />
-                <TextView
+                <ImageView
                     android:id="@+id/code_b_3"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="9"
-                    android:autoSizeMaxTextSize="20sp"
-                    android:autoSizeMinTextSize="6sp"
-                    android:autoSizeStepGranularity="0.5sp"
-                    android:autoSizeTextType="uniform"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/carbonplus_regular"
-                    android:gravity="center_vertical|start"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:textColor="#FFF1F5F9"
-                    android:paddingStart="6dp" />
+                    android:scaleType="fitStart" />
             </LinearLayout>
 
             <LinearLayout
@@ -963,38 +633,18 @@
                     android:layout_weight="1"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
-                    <TextView
+                    <ImageView
                         android:id="@+id/mkt_lbl_3"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|start"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FF8A9BB2"
-                        />
-                    <TextView
+                        android:scaleType="fitStart" />
+                    <ImageView
                         android:id="@+id/mkt_val_3"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="18sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFF1F5F9"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -1010,22 +660,12 @@
                         android:layout_weight="1"
                         android:scaleType="fitStart"
                          android:paddingTop="3dp" android:paddingBottom="3dp" />
-                    <TextView
+                    <ImageView
                         android:id="@+id/visa_val_3"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1.4"
-                        android:autoSizeMaxTextSize="15sp"
-                        android:autoSizeMinTextSize="6sp"
-                        android:autoSizeStepGranularity="0.5sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/carbonplus_regular"
-                        android:gravity="center_vertical|end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFCBD5E1"
-                        />
+                        android:scaleType="fitEnd" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

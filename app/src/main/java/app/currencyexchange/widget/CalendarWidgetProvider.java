@@ -71,7 +71,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             R.layout.cal_k4, R.layout.cal_k5, R.layout.cal_k6, R.layout.cal_k7, R.layout.cal_k8};
 
     /** Height (dp) from which the variant with k event rows fits. */
-    private static int heightFor(int k) { return k == 0 ? 110 : 150 + 46 * k; }
+    private static int heightFor(int k) { return k == 0 ? 110 : 160 + 46 * k; }
 
     static void updateAll(Context ctx) {
         AppWidgetManager awm = AppWidgetManager.getInstance(ctx);
@@ -122,6 +122,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    /** Text as a picture in the original Carbon+ font; sizeDp is the intended font size. */
+    private static void t(RemoteViews rv, android.graphics.Typeface tf, int viewId, String s, int color,
+                          float sizeDp, float fill, boolean italic) {
+        rv.setImageViewBitmap(viewId, TextBmp.make(tf, sizeDp * 2.5f, fill, italic, false, s, color));
+    }
+
     private static int rid(Context ctx, String name) {
         return ctx.getResources().getIdentifier(name, "id", ctx.getPackageName());
     }
@@ -129,18 +135,16 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     private static RemoteViews build(Context ctx, int k, List<CalendarData.Event> events, boolean allowed,
                                      PendingIntent open, PendingIntent add) {
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), LAYOUTS[k]);
+        android.graphics.Typeface tf = Theme.uiMedium(ctx);
         LocalDate today = LocalDate.now();
         long now = System.currentTimeMillis();
         java.util.Locale loc = java.util.Locale.getDefault();
 
-        rv.setTextViewText(R.id.cal_day, String.valueOf(today.getDayOfMonth()));
-        rv.setTextColor(R.id.cal_day, Theme.TEXT);
-        rv.setTextViewText(R.id.cal_month, today.format(java.time.format.DateTimeFormatter.ofPattern("MMMM", loc)));
-        rv.setTextColor(R.id.cal_month, Theme.TEXT);
+        t(rv, tf, R.id.cal_day, String.valueOf(today.getDayOfMonth()), Theme.TEXT, 38, 0.82f, false);
+        t(rv, tf, R.id.cal_month, today.format(java.time.format.DateTimeFormatter.ofPattern("MMMM", loc)), Theme.TEXT, 19, 0.82f, false);
         int week = today.get(java.time.temporal.WeekFields.of(java.time.DayOfWeek.SUNDAY, 1).weekOfYear());
-        rv.setTextViewText(R.id.cal_sub, "Today, " + today.format(java.time.format.DateTimeFormatter.ofPattern("EEEE", loc))
-                + "  \u00B7  Week " + week);
-        rv.setTextColor(R.id.cal_sub, Theme.MUTED);
+        t(rv, tf, R.id.cal_sub, "Today, " + today.format(java.time.format.DateTimeFormatter.ofPattern("EEEE", loc))
+                + "  \u00B7  Week " + week, Theme.MUTED, 13, 0.8f, false);
 
         // week row, Sunday first
         LocalDate sunday = today.minusDays(today.getDayOfWeek().getValue() % 7);
@@ -148,16 +152,15 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             LocalDate d = sunday.plusDays(i);
             boolean isToday = d.equals(today);
             int lab = rid(ctx, "wk_label_" + i), num = rid(ctx, "wk_num_" + i);
-            rv.setTextViewText(lab, d.format(java.time.format.DateTimeFormatter.ofPattern("EEE", loc)).toUpperCase(loc));
-            rv.setTextColor(lab, isToday ? Theme.AMBER_LIGHT : Theme.MUTED);
-            rv.setTextViewText(num, String.valueOf(d.getDayOfMonth()));
-            rv.setTextColor(num, isToday ? 0xFFFFFFFF : Theme.TEXT_SOFT);
+            t(rv, tf, lab, d.format(java.time.format.DateTimeFormatter.ofPattern("EEE", loc)).toUpperCase(loc),
+                    isToday ? Theme.AMBER_LIGHT : Theme.MUTED, 11, 0.8f, false);
+            t(rv, tf, num, String.valueOf(d.getDayOfMonth()), isToday ? 0xFFFFFFFF : Theme.TEXT_SOFT, 16, 0.6f, false);
             rv.setInt(num, "setBackgroundResource", isToday ? R.drawable.cal_today : 0);
         }
 
         // events
         int shown = Math.min(k, Math.max(events.size(), (k > 0 && (events.isEmpty() || !allowed)) ? 1 : 0));
-        java.time.format.DateTimeFormatter tf = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT);
+        java.time.format.DateTimeFormatter tfmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT);
         for (int i = 0; i < k; i++) {
             int row = rid(ctx, "cal_row_" + i), bar = rid(ctx, "cal_bar_" + i), time = rid(ctx, "cal_time_" + i),
                     hint = rid(ctx, "cal_hint_" + i), title = rid(ctx, "cal_title_" + i);
@@ -165,28 +168,25 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             rv.setViewVisibility(row, android.view.View.VISIBLE);
             if (!allowed || events.isEmpty()) {
                 rv.setViewVisibility(bar, android.view.View.INVISIBLE);
-                rv.setTextViewText(title, allowed ? "No upcoming events" : "Calendar access needed");
-                rv.setTextColor(title, Theme.TEXT);
-                rv.setTextViewText(time, allowed ? "Nothing in the next 120 days" : "Tap to open settings");
-                rv.setTextColor(time, Theme.MUTED);
-                rv.setTextViewText(hint, "");
+                t(rv, tf, title, allowed ? "No upcoming events" : "Calendar access needed", Theme.TEXT, 18, 0.8f, false);
+                t(rv, tf, time, allowed ? "Nothing in the next 120 days" : "Tap to open settings", Theme.MUTED, 13, 0.8f, false);
+                t(rv, tf, hint, "", Theme.MUTED, 13, 0.8f, false);
                 continue;
             }
             CalendarData.Event ev = events.get(i);
             rv.setViewVisibility(bar, android.view.View.VISIBLE);
             rv.setInt(bar, "setColorFilter", ev.color != 0 ? (0xFF000000 | ev.color) : Theme.AMBER);
-            String t;
-            if (ev.allDay) t = "All day";
+            String tm;
+            if (ev.allDay) tm = "All day";
             else {
                 java.time.ZoneId z = java.time.ZoneId.systemDefault();
-                t = java.time.Instant.ofEpochMilli(ev.begin).atZone(z).format(tf) + " - "
-                        + java.time.Instant.ofEpochMilli(ev.end).atZone(z).format(tf);
+                tm = java.time.Instant.ofEpochMilli(ev.begin).atZone(z).format(tfmt) + " - "
+                        + java.time.Instant.ofEpochMilli(ev.end).atZone(z).format(tfmt);
             }
             if (!ev.date.equals(today)) {
-                t = ev.date.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", loc)) + "  \u00B7  " + t;
+                tm = ev.date.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", loc)) + "  \u00B7  " + tm;
             }
-            rv.setTextViewText(time, t);
-            rv.setTextColor(time, Theme.MUTED);
+            t(rv, tf, time, tm, Theme.MUTED, 13, 0.8f, false);
             String h = "";
             if (!ev.allDay && ev.date.equals(today)) {
                 if (ev.begin <= now) h = "now";
@@ -195,16 +195,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                     if (mins <= 90) h = "in " + mins + (mins == 1 ? " minute" : " minutes");
                 }
             }
-            rv.setTextViewText(hint, h);
-            rv.setTextColor(hint, Theme.AMBER_LIGHT);
-            rv.setTextViewText(title, Util.capWords(ev.title));
-            rv.setTextColor(title, Theme.TEXT);
+            t(rv, tf, hint, h, Theme.AMBER_LIGHT, 13, 0.8f, true);
+            t(rv, tf, title, Util.ellipsize(Util.capWords(ev.title), 30), Theme.TEXT, 18, 0.8f, false);
         }
         int hidden = allowed ? events.size() - k : 0;
         if (k > 0 && hidden > 0) {
             rv.setViewVisibility(R.id.cal_more, android.view.View.VISIBLE);
-            rv.setTextViewText(R.id.cal_more, "+" + hidden + " more");
-            rv.setTextColor(R.id.cal_more, Theme.MUTED);
+            t(rv, tf, R.id.cal_more, "+" + hidden + " more", Theme.MUTED, 11, 0.8f, false);
         } else {
             rv.setViewVisibility(R.id.cal_more, android.view.View.GONE);
         }
