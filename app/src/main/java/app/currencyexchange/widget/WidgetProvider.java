@@ -10,6 +10,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.widget.RemoteViews;
 
 public class WidgetProvider extends AppWidgetProvider {
@@ -51,11 +52,14 @@ public class WidgetProvider extends AppWidgetProvider {
 
     /** Redraw from cache, queue a network refresh if stale, and arm the next per-minute redraw. */
     private static void tick(Context ctx) {
-        updateAll(ctx);
         if (widgetIds(ctx).length == 0) return;
-        ensurePeriodicJob(ctx);
-        if (System.currentTimeMillis() - Store.lastFetch(ctx) > STALE_MS) requestRefresh(ctx);
-        scheduleNextTick(ctx);
+        // Arm the next minute FIRST so a failure while drawing can never break the chain.
+        try { scheduleNextTick(ctx); } catch (Exception ignored) { }
+        try { updateAll(ctx); } catch (Throwable ignored) { }
+        try {
+            ensurePeriodicJob(ctx);
+            if (System.currentTimeMillis() - Store.lastFetch(ctx) > STALE_MS) requestRefresh(ctx);
+        } catch (Exception ignored) { }
     }
 
     static int[] widgetIds(Context ctx) {
@@ -82,7 +86,16 @@ public class WidgetProvider extends AppWidgetProvider {
     private static void scheduleNextTick(Context ctx) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         long next = (System.currentTimeMillis() / 60_000L + 1) * 60_000L + 500L; // just after the minute turns
-        am.setAndAllowWhileIdle(AlarmManager.RTC, next, tickIntent(ctx));
+        PendingIntent pi = tickIntent(ctx);
+        try {
+            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC, next, pi); // on the dot, even in battery saver
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC, next, pi);
+            }
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC, next, pi);
+        }
     }
 
     private static void ensurePeriodicJob(Context ctx) {

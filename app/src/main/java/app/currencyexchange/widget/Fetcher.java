@@ -53,7 +53,7 @@ final class Fetcher {
                 any = true;
             } catch (Exception ignored) { }
             try {
-                double v = visaRate(from, to, Store.fee(ctx));
+                double v = visaRate(ctx, from, to, Store.fee(ctx));
                 if (!Double.isNaN(v)) Store.putVisa(ctx, from, to, v);
             } catch (Exception ignored) { }
         }
@@ -62,11 +62,19 @@ final class Fetcher {
         try {
             double[] ll = Store.weatherLatLon(ctx);
             String key = Store.wxKey(ctx);
-            if (!Double.isNaN(ll[0]) && !key.isEmpty()) {
+            if (Double.isNaN(ll[0])) {
+                Store.sp(ctx).edit().putString("wxErr", "no location yet (tap 'Use my location' or type a home city)").apply();
+            } else if (key.isEmpty()) {
+                Store.sp(ctx).edit().putString("wxErr", "Tomorrow.io API key is empty").apply();
+            } else {
                 weather(ctx, ll[0], ll[1], key);
+                Store.sp(ctx).edit().remove("wxErr").apply();
                 any = true;
             }
-        } catch (Exception ignored) { }
+        } catch (Exception e) {
+            String m = e.getMessage() == null ? e.toString() : e.getMessage();
+            Store.sp(ctx).edit().putString("wxErr", m.replaceAll("apikey=[^&\\s]+", "apikey=***")).apply();
+        }
 
         if (any) Store.setLastFetch(ctx);
     }
@@ -101,14 +109,46 @@ final class Fetcher {
         throw last;
     }
 
-    /** Same endpoint as the preset (fromCurr=TARGET, toCurr=SOURCE). */
-    private static double visaRate(String from, String to, float fee) throws Exception {
-        String d = LocalDate.now().format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US));
-        String url = "https://www.visa.com.au/cmsapi/fx/rates?amount=1&fee=" + fee
-                + "&utcConvertedDate=" + d + "&exchangedate=" + d
-                + "&fromCurr=" + to.toUpperCase(Locale.ROOT) + "&toCurr=" + from.toUpperCase(Locale.ROOT);
-        JSONObject o = new JSONObject(Net.get(url)).getJSONObject("originalValues");
-        return Util.parseNum(o.optString("toAmountWithAdditionalFee", ""));
+    /**
+     * Same endpoint as the preset (fromCurr=TARGET, toCurr=SOURCE), but sends browser-like headers,
+     * tries a second Visa domain, and falls back to the previous 3 days (Visa publishes rates with a
+     * delay, and not on weekends). The last error is stored so the settings screen can show it.
+     */
+    private static double visaRate(Context ctx, String from, String to, float fee) {
+        String[] hosts = {"https://www.visa.com.au", "https://www.visa.com"};
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
+        String err = "no response";
+        for (int back = 0; back <= 3; back++) {
+            boolean reached = false;
+            String d = LocalDate.now().minusDays(back).format(fmt);
+            for (String host : hosts) {
+                try {
+                    String url = host + "/cmsapi/fx/rates?amount=1&fee=" + fee
+                            + "&utcConvertedDate=" + URLEncoder.encode(d, "UTF-8")
+                            + "&exchangedate=" + URLEncoder.encode(d, "UTF-8")
+                            + "&fromCurr=" + to.toUpperCase(Locale.ROOT)
+                            + "&toCurr=" + from.toUpperCase(Locale.ROOT);
+                    String body = Net.get(url, host + "/support/consumer/travel-support/exchange-rate-calculator.html");
+                    reached = true;
+                    JSONObject o = new JSONObject(body).optJSONObject("originalValues");
+                    if (o == null) {
+                        err = from + ": no rate for " + d + " (" + body.substring(0, Math.min(100, body.length())) + ")";
+                        continue;
+                    }
+                    double v = Util.parseNum(o.optString("toAmountWithAdditionalFee", ""));
+                    if (!Double.isNaN(v)) {
+                        Store.sp(ctx).edit().remove("visaErr").apply();
+                        return v;
+                    }
+                    err = from + ": empty value for " + d;
+                } catch (Exception e) {
+                    err = from + " " + host.replace("https://", "") + ": " + e.getMessage();
+                }
+            }
+            if (!reached) break; // blocked / offline: older dates won't help
+        }
+        Store.sp(ctx).edit().putString("visaErr", err).apply();
+        return Double.NaN;
     }
 
     private static void weather(Context ctx, double lat, double lon, String key) throws Exception {
