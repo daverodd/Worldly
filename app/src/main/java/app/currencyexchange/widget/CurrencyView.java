@@ -39,9 +39,18 @@ final class CurrencyView {
         rv.setImageViewBitmap(viewId, TextBmp.make(tf, sizeDp * 2.5f, 0.8f, false, shadow, s, color));
     }
 
-    static RemoteViews build(Context ctx) {
+    static final int[] LAYOUTS = {R.layout.widget_k1, R.layout.widget_k2, R.layout.widget_k3,
+            R.layout.widget_k4, R.layout.widget_k5, R.layout.widget_k6};
+
+    /** Widget height (dp) from which the variant with k rows fits. */
+    static int heightFor(int k) { return 144 + 54 * k; }
+
+    private static final android.util.LruCache<String, Bitmap> PICS = new android.util.LruCache<>(60);
+
+    /** Variant with k currency rows (1..6). */
+    static RemoteViews build(Context ctx, int k) {
         Typeface reg = Theme.uiMedium(ctx), bold = Theme.uiBold(ctx);
-        RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget);
+        RemoteViews rv = new RemoteViews(ctx.getPackageName(), LAYOUTS[k - 1]);
 
         // header: feels like, humidity, sunrise, sunset
         double[] wx = Store.weather(ctx);
@@ -87,7 +96,7 @@ final class CurrencyView {
         String to = Store.to(ctx).trim().toUpperCase(Locale.ROOT);
         Bitmap visaLogo = visaLogo(ctx);
         Bitmap toFlag = flagOrLabel(ctx, Util.countryOfCurrency(to), to);
-        for (int i = 0; i < Store.DEF_FROM.length; i++) {
+        for (int i = 0; i < k; i++) {
             String from = Store.from(ctx, i).trim().toUpperCase(Locale.ROOT);
             rv.setImageViewBitmap(id(ctx, "fl_a_" + i), flagOrLabel(ctx, Util.countryOfCurrency(from), from));
             txt(ctx, rv, id(ctx, "code_a_" + i), from, reg, Theme.TEXT, 15, false);
@@ -115,6 +124,15 @@ final class CurrencyView {
 
     /** Flag with rounded corners, or a grey tile with the code when the flag isn't downloaded yet. */
     private static Bitmap flagOrLabel(Context ctx, String cc, String code) {
+        String key = "f|" + cc + "|" + code + "|" + (Flags.flag(ctx, cc) != null);
+        Bitmap hit = PICS.get(key);
+        if (hit != null) return hit;
+        Bitmap made = flagOrLabel0(ctx, cc, code);
+        PICS.put(key, made);
+        return made;
+    }
+
+    private static Bitmap flagOrLabel0(Context ctx, String cc, String code) {
         Bitmap fl = Flags.flag(ctx, cc);
         Bitmap out = Bitmap.createBitmap(140, 120, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
@@ -135,6 +153,15 @@ final class CurrencyView {
     }
 
     private static Bitmap visaLogo(Context ctx) {
+        String key = "v|" + (Flags.visa(ctx) != null);
+        Bitmap hit = PICS.get(key);
+        if (hit != null) return hit;
+        Bitmap made = visaLogo0(ctx);
+        PICS.put(key, made);
+        return made;
+    }
+
+    private static Bitmap visaLogo0(Context ctx) {
         Bitmap vb = Flags.visa(ctx);
         Bitmap out = Bitmap.createBitmap(120, 80, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
@@ -157,7 +184,16 @@ final class CurrencyView {
 
     /** Clock cell background: flag faded into graphite, day (amber) / night (slate) strip below, outer corners rounded. */
     private static Bitmap clockBg(Bitmap flag, boolean day, boolean roundLeft, boolean roundRight) {
-        final int w = 200, h = 240;
+        String key = "c|" + System.identityHashCode(flag) + "|" + day + roundLeft + roundRight;
+        Bitmap hit = PICS.get(key);
+        if (hit != null) return hit;
+        Bitmap made = clockBg0(flag, day, roundLeft, roundRight);
+        PICS.put(key, made);
+        return made;
+    }
+
+    private static Bitmap clockBg0(Bitmap flag, boolean day, boolean roundLeft, boolean roundRight) {
+        final int w = 120, h = 144;
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         int layer = c.saveLayer(0, 0, w, h, null);
@@ -176,7 +212,7 @@ final class CurrencyView {
         gp.setShader(new LinearGradient(0, 0, 0, fr.bottom, 0x66000000, 0xF20B0E15, Shader.TileMode.CLAMP));
         c.drawRect(fr, gp);
 
-        float rx = 62f, ry = 58f;
+        float rx = 37f, ry = 35f;
         Path outside = new Path();
         outside.addRoundRect(new RectF(0, 0, w, h),
                 new float[]{roundLeft ? rx : 0, roundLeft ? ry : 0, roundRight ? rx : 0, roundRight ? ry : 0,

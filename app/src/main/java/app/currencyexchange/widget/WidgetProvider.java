@@ -23,6 +23,11 @@ public class WidgetProvider extends AppWidgetProvider {
     }
 
     @Override
+    public void onAppWidgetOptionsChanged(Context ctx, AppWidgetManager awm, int id, android.os.Bundle opts) {
+        updateAll(ctx);
+    }
+
+    @Override
     public void onEnabled(Context ctx) {
         requestRefresh(ctx);
     }
@@ -68,13 +73,36 @@ public class WidgetProvider extends AppWidgetProvider {
     }
 
     static void updateAll(Context ctx) {
+        AppWidgetManager awm = AppWidgetManager.getInstance(ctx);
         int[] ids = widgetIds(ctx);
         if (ids.length == 0) return;
-        RemoteViews rv = CurrencyView.build(ctx);
         PendingIntent open = PendingIntent.getActivity(ctx, 0, new Intent(ctx, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        rv.setOnClickPendingIntent(R.id.root, open);
-        AppWidgetManager.getInstance(ctx).updateAppWidget(ids, rv);
+        int max = CurrencyView.LAYOUTS.length;
+        for (int id : ids) {
+            RemoteViews rv;
+            if (Build.VERSION.SDK_INT >= 31) {
+                // The launcher shows the variant whose number of rows fits the real height, and re-picks on resize.
+                java.util.Map<android.util.SizeF, RemoteViews> map = new java.util.LinkedHashMap<>();
+                for (int k = 1; k <= max; k++) {
+                    RemoteViews v = CurrencyView.build(ctx, k);
+                    v.setOnClickPendingIntent(R.id.root, open);
+                    map.put(new android.util.SizeF(110f, CurrencyView.heightFor(k)), v);
+                }
+                rv = new RemoteViews(map);
+            } else {
+                android.os.Bundle o = awm.getAppWidgetOptions(id);
+                boolean land = ctx.getResources().getConfiguration().orientation
+                        == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+                int hdp = o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT
+                        : AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 400);
+                int k = 1;
+                for (int i = 1; i <= max; i++) if (CurrencyView.heightFor(i) <= hdp) k = i;
+                rv = CurrencyView.build(ctx, k);
+                rv.setOnClickPendingIntent(R.id.root, open);
+            }
+            awm.updateAppWidget(id, rv);
+        }
     }
 
     private static PendingIntent tickIntent(Context ctx) {
