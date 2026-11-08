@@ -198,10 +198,10 @@ public class MainActivity extends Activity {
         perms.addView(batStatus);
         batButton = secondaryButton("Allow running in background", v -> {
             try {
-                startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                startActivity(new android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                         android.net.Uri.parse("package:" + getPackageName())));
             } catch (Exception e) {
-                startActivity(new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+                startActivity(new android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
             }
         });
         perms.addView(batButton, matchWrap(8));
