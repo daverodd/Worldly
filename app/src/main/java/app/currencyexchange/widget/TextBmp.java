@@ -52,6 +52,33 @@ final class TextBmp {
         return b;
     }
 
+    /**
+     * Tight text picture: from the top of the capitals to just below the baseline (room for a comma), sized in dp
+     * (2.5 px per dp), so layouts can align baselines and cap tops exactly with wrap_content.
+     */
+    static Bitmap tight(Typeface tf, float sizeDp, String s, int color) {
+        String key = "T|" + System.identityHashCode(tf) + "|" + sizeDp + "|" + color + "|" + s;
+        Bitmap hit = CACHE.get(key);
+        if (hit != null) return hit;
+        float px = sizeDp * 2.5f;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
+        p.setTypeface(tf);
+        p.setTextSize(px);
+        p.setColor(color);
+        android.graphics.Rect cap = new android.graphics.Rect();
+        p.getTextBounds("H0", 0, 2, cap);
+        float top = -cap.top;              // cap height above the baseline
+        float below = px * 0.2f;           // comma room below the baseline
+        float pad = px * 0.04f;
+        int h = Math.max(2, (int) Math.ceil(top + below + pad));
+        int w = Math.max(2, (int) Math.ceil(p.measureText(s == null ? "" : s) + 2 * pad));
+        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        new Canvas(b).drawText(s == null ? "" : s, pad, top + pad, p);
+        b.setDensity(400); // 2.5 px per dp
+        CACHE.put(key, b);
+        return b;
+    }
+
     static Bitmap make(Typeface tf, float px, float fill, boolean italic, boolean shadow, String s, int color) {
         return make(tf, px, fill, italic, shadow, new String[]{s == null ? "" : s}, new int[]{color});
     }

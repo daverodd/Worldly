@@ -116,18 +116,18 @@ final class CurrencyView {
             rv.setImageViewBitmap(id(ctx, "fl_b_" + i), toFlag);
             txt(ctx, rv, id(ctx, "code_b_" + i), to, reg, Theme.TEXT, 15, false);
             double market = Store.rate(ctx, from, to);
-            txt(ctx, rv, id(ctx, "mkt_lbl_" + i), "Market", reg, Theme.MUTED, 11, false);
-            txtF(rv, id(ctx, "mkt_val_" + i), Util.fmt0(market), reg, Theme.TEXT, 12.5f, 0.92f);
+            rv.setImageViewBitmap(id(ctx, "mkt_lbl_" + i), TextBmp.tight(reg, 11, "Market", Theme.MUTED));
+            rv.setImageViewBitmap(id(ctx, "mkt_val_" + i), TextBmp.tight(reg, 12.5f, Util.fmt0(market), Theme.TEXT));
             rv.setImageViewBitmap(id(ctx, "visa_logo_" + i), visaLogo);
             double visa = Util.alignToMarket(Store.visa(ctx, from, to), market);
             int vv = id(ctx, "visa_val_" + i);
             if (!Double.isNaN(visa)) {
-                txtF(rv, vv, Util.fmt0(visa), reg, Theme.TEXT_SOFT, 11.5f, 0.86f);
+                rv.setImageViewBitmap(vv, TextBmp.tight(reg, 11.5f, Util.fmt0(visa), Theme.TEXT_SOFT));
             } else if (!Double.isNaN(market)) {
                 // Visa did not answer: estimate = market + fee, marked "~" and muted
-                txtF(rv, vv, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), reg, Theme.MUTED, 11.5f, 0.86f);
+                rv.setImageViewBitmap(vv, TextBmp.tight(reg, 11.5f, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), Theme.MUTED));
             } else {
-                txt(ctx, rv, vv, "", reg, Theme.MUTED, 11.5f, false);
+                rv.setImageViewBitmap(vv, TextBmp.tight(reg, 11.5f, "", Theme.MUTED));
             }
         }
         return rv;
