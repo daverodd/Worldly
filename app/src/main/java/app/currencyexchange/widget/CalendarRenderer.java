@@ -5,41 +5,43 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Shader;
-import android.graphics.Typeface;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.time.temporal.WeekFields;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Draws the week-strip + next-event card of the KWGT "Calendar" preset. Same structure as the preset:
- * "MMM yyyy | Week n" header, seven day cells (Sunday to Saturday, today highlighted), a date tile, the event
- * title, its weekday, five paging dots and previous/next arrows.
- * Surfaces, borders and the amber highlight come from the shared SAB palette; the font stays Futura Medium BT.
+ * Calendar widget layout (modelled on a modern agenda widget): one rounded panel with the big day number,
+ * month + "Today, weekday" and a "+" button; the week row with today in an amber circle; a divider; then your
+ * upcoming events, each with a colour bar, time range, an "in N minutes" hint and the title.
+ * Colours, borders and the amber accent come from the shared SAB palette and the font stays Futura Medium BT.
  *
- * Sizing: text and tiles keep a FIXED size (in dp), so making the widget wider only gives the cells and the
- * title more room, and making it taller adds event rows. Wide-and-short widgets show one event with arrows,
- * taller ones show a list. The arrow tap zones are fixed-size at the right edge (see widget_calendar.xml).
- * The outermost corners use the launcher's own widget corner radius so they are never cut off.
+ * Sizing: text and rows keep a FIXED size, so a wider widget gives titles more room and a taller widget lists
+ * more events. Every shape uses the same corner radius, and the whole picture is inset from the widget edge by
+ * just enough that the launcher's own rounded clip can never cut a corner.
  */
 final class CalendarRenderer {
     private CalendarRenderer() {}
 
-    static final float DESIGN_H = 238f;
-    /** dp of each arrow tap zone and of the margin to the right edge; must match widget_calendar.xml. */
-    static final float ZONE_DP = 42f, MARGIN_DP = 7f;
+    /** Height of the content in layout units when it shows header + week row + one event row. */
+    private static final float NEED_UNITS = 177f;
+    /** dp of the "+" tap zone; must match widget_calendar.xml. */
+    static final float ADD_ZONE_DP = 56f;
 
     /** One layout unit in pixels (about 0.66 dp). */
     static float unit(Context ctx) { return ctx.getResources().getDisplayMetrics().density * 0.66f; }
 
-    /** Corner radius the launcher clips widgets with (system value on Android 12+). */
-    static float outerRadius(Context ctx) {
+    /** Radius the launcher clips widgets with (system value on Android 12+). */
+    private static float clipRadius(Context ctx) {
         float d = ctx.getResources().getDisplayMetrics().density;
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             try {
@@ -49,265 +51,158 @@ final class CalendarRenderer {
         return 16f * d;
     }
 
-    /** True when the widget is short enough for the one-event card; taller widgets get an event list. */
-    static boolean compact(Context ctx, int w, int h) {
-        return h <= DESIGN_H * unit(ctx) * 1.3f;
-    }
+    static Bitmap render(Context ctx, int w, int h, List<CalendarData.Event> events, boolean allowed) {
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        float u = Math.min(unit(ctx), h / NEED_UNITS);
+        float r = 14f * u;
+        // inset so a corner of radius r sits fully inside the launcher's clip circle of radius R
+        float inset = Math.max(3f * ctx.getResources().getDisplayMetrics().density, 0.293f * Math.max(0, clipRadius(ctx) - r));
+        RectF box = new RectF(inset, inset, w - inset, h - inset);
 
-    static Bitmap render(Context ctx, int w, int h, List<CalendarData.Event> events, int idx, boolean allowed) {
-        return compact(ctx, w, h) ? renderCard(ctx, w, h, events, idx, allowed) : renderList(ctx, w, h, events, allowed);
-    }
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setTypeface(Theme.futura(ctx));
+        Locale loc = Locale.getDefault();
+        LocalDate today = LocalDate.now();
 
-    // ------------------------------------------------------------------ drawing helpers
-
-    /** Filled rounded panel with per-corner radii and a thin slate border. */
-    private static void panel(Canvas c, Paint p, RectF r, float top, float bottom, Shader fill, float u) {
-        Path path = new Path();
-        path.addRoundRect(r, new float[]{top, top, top, top, bottom, bottom, bottom, bottom}, Path.Direction.CW);
-        p.setStyle(Paint.Style.FILL);
-        p.setShader(fill);
-        c.drawPath(path, p);
+        // ---- panel
+        p.setShader(new LinearGradient(0, box.top, 0, box.bottom, Theme.SURFACE, Theme.PANEL, Shader.TileMode.CLAMP));
+        c.drawRoundRect(box, r, r, p);
         p.setShader(null);
-        float sw = Math.max(1f, 1.2f * u);
-        RectF in = new RectF(r.left + sw / 2, r.top + sw / 2, r.right - sw / 2, r.bottom - sw / 2);
-        Path bp = new Path();
-        float t = Math.max(0, top - sw / 2), b = Math.max(0, bottom - sw / 2);
-        bp.addRoundRect(in, new float[]{t, t, t, t, b, b, b, b}, Path.Direction.CW);
         Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
         line.setStyle(Paint.Style.STROKE);
-        line.setStrokeWidth(sw);
+        line.setStrokeWidth(Math.max(1f, 1.2f * u));
         line.setColor(Theme.BORDER);
-        c.drawPath(bp, line);
-    }
+        float lw = line.getStrokeWidth() / 2f;
+        c.drawRoundRect(new RectF(box.left + lw, box.top + lw, box.right - lw, box.bottom - lw), r, r, line);
 
-    private static LinearGradient h(RectF r, int a, int b) {
-        return new LinearGradient(r.left, 0, r.right, 0, a, b, Shader.TileMode.CLAMP);
-    }
+        float px = 14f * u;                       // inner side padding
+        float left = box.left + px, right = box.right - px;
+        float y = box.top + 10f * u;
 
-    private static LinearGradient v(RectF r, int a, int b) {
-        return new LinearGradient(0, r.top, 0, r.bottom, a, b, Shader.TileMode.CLAMP);
-    }
-
-    // ------------------------------------------------------------------ shared: header + week strip
-
-    private static void drawTop(Canvas c, Paint p, RectF top, float u, float rOut, Locale loc, LocalDate today) {
-        float r = 14f * u;
-        panel(c, p, top, Math.max(r, rOut), r, h(top, Theme.HEADER, Theme.PANEL), u);
-
-        float th = top.height();
-        p.setColor(Theme.TEXT);
-        p.setTextSize(20f * u);
+        // ---- header: big day number, month + "Today, weekday", plus button
         p.setTextAlign(Paint.Align.LEFT);
-        String head = today.format(DateTimeFormatter.ofPattern("MMM yyyy", loc)) + " | Week "
-                + today.get(WeekFields.of(DayOfWeek.SUNDAY, 1).weekOfYear());
-        c.drawText(head, top.left + Math.max(16f * u, rOut * 0.8f), top.top + th * 0.21f + 7f * u, p);
+        p.setColor(Theme.TEXT);
+        p.setTextSize(42f * u);
+        String day = String.valueOf(today.getDayOfMonth());
+        c.drawText(day, left, y + 36f * u, p);
+        float dayW = p.measureText(day);
+        float tx = left + dayW + 12f * u;
+        p.setTextSize(17f * u);
+        c.drawText(today.format(DateTimeFormatter.ofPattern("MMMM", loc)), tx, y + 18f * u, p);
+        p.setColor(Theme.MUTED);
+        p.setTextSize(13f * u);
+        int week = today.get(WeekFields.of(DayOfWeek.SUNDAY, 1).weekOfYear());
+        c.drawText("Today, " + today.format(DateTimeFormatter.ofPattern("EEEE", loc)) + "  \u00B7  Week " + week, tx, y + 36f * u, p);
 
-        float pad = 7f * u, gap = 4f * u;
-        RectF strip = new RectF(top.left + pad, top.top + th * 0.40f, top.right - pad, top.bottom - pad);
-        LocalDate sunday = today.minusDays(today.getDayOfWeek().getValue() % 7); // ISO: Sunday = 7 -> 0
-        float cw = (strip.width() - 6 * gap) / 7f;
-        DateTimeFormatter dayName = DateTimeFormatter.ofPattern("EEE", loc);
+        float bd = 28f * u; // plus button diameter
+        float bcx = right - bd / 2f, bcy = y + 20f * u;
+        Paint bp = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bp.setStyle(Paint.Style.STROKE);
+        bp.setStrokeWidth(Math.max(1f, 1.2f * u));
+        bp.setColor(Theme.BORDER);
+        c.drawCircle(bcx, bcy, bd / 2f, bp);
+        bp.setColor(Theme.TEXT_SOFT);
+        bp.setStrokeWidth(1.8f * u);
+        bp.setStrokeCap(Paint.Cap.ROUND);
+        c.drawLine(bcx - 6f * u, bcy, bcx + 6f * u, bcy, bp);
+        c.drawLine(bcx, bcy - 6f * u, bcx, bcy + 6f * u, bp);
+        y = box.top + 10f * u + 46f * u + 8f * u;
+
+        // ---- week row (Sunday first, as in the preset)
+        LocalDate sunday = today.minusDays(today.getDayOfWeek().getValue() % 7);
+        float colW = (right - left) / 7f;
+        DateTimeFormatter dn = DateTimeFormatter.ofPattern("EEE", loc);
         for (int i = 0; i < 7; i++) {
             LocalDate d = sunday.plusDays(i);
             boolean isToday = d.equals(today);
-            float x0 = strip.left + i * (cw + gap);
-            RectF cell = new RectF(x0, strip.top, x0 + cw, strip.bottom);
-            p.setShader(v(cell, isToday ? Theme.AMBER : Theme.SURFACE_HI, isToday ? Theme.AMBER_DEEP : Theme.SURFACE));
-            c.drawRoundRect(cell, 9f * u, 9f * u, p);
-            p.setShader(null);
-            float cx = cell.centerX(), cy = cell.centerY();
+            float cx = left + colW * (i + 0.5f);
             p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(isToday ? 0xFFFFFFFF : Theme.MUTED);
-            p.setTextSize(15f * u);
-            c.drawText(d.format(dayName), cx, cy - 5f * u, p);
-            p.setColor(isToday ? 0xFFFFFFFF : Theme.TEXT);
-            p.setTextSize(24f * u);
-            c.drawText(String.format(loc, "%02d", d.getDayOfMonth()), cx, cy + 21f * u, p);
-        }
-        p.setTextAlign(Paint.Align.LEFT);
-    }
-
-    private static void tile(Canvas c, Paint p, RectF t, float u) {
-        panel(c, p, t, 9f * u, 9f * u, v(t, Theme.PANEL, Theme.DEEP), u);
-    }
-
-    // ------------------------------------------------------------------ card mode (short widgets)
-
-    private static Bitmap renderCard(Context ctx, int w, int h, List<CalendarData.Event> events, int idx, boolean allowed) {
-        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(bmp);
-        float density = ctx.getResources().getDisplayMetrics().density;
-        float u = Math.min(unit(ctx), h / DESIGN_H);
-        float rOut = outerRadius(ctx);
-        float r = 14f * u;
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setTypeface(Theme.futura(ctx));
-        LocalDate today = LocalDate.now();
-        Locale loc = Locale.getDefault();
-
-        drawTop(c, p, new RectF(0, 0, w, h * 0.50f), u, rOut, loc, today);
-
-        RectF card = new RectF(0, h * 0.54f, w, h);
-        panel(c, p, card, r, Math.max(r, rOut), h(card, Theme.SURFACE_HI, Theme.SURFACE), u);
-
-        float ch = card.height();
-        float tileSz = Math.min(ch * 0.76f, 90f * u);
-        float tl = Math.max(14f * u, rOut * 0.6f);
-        RectF tileR = new RectF(tl, card.centerY() - tileSz / 2f, tl + tileSz, card.centerY() + tileSz / 2f);
-        tile(c, p, tileR, u);
-
-        boolean has = allowed && !events.isEmpty();
-        CalendarData.Event ev = has ? events.get(Math.max(0, Math.min(idx, events.size() - 1))) : null;
-        float textX = tileR.right + 16f * u;
-        float mid = card.centerY();
-
-        // arrows: fixed-size zones at the right edge
-        float zone = ZONE_DP * density, margin = MARGIN_DP * density;
-        float prevC = w - margin - zone * 1.5f, nextC = w - margin - zone * 0.5f;
-        float textMax = prevC - zone * 0.5f - 8f * u - textX;
-
-        if (has) {
-            p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(Theme.TEXT);
-            p.setTextSize(38f * u);
-            c.drawText(String.format(loc, "%02d", ev.date.getDayOfMonth()), tileR.centerX(), tileR.centerY() + 3f * u, p);
-            p.setColor(Theme.AMBER_LIGHT);
-            p.setTextSize(18f * u);
-            c.drawText(ev.date.format(DateTimeFormatter.ofPattern("MMM", loc)), tileR.centerX(), tileR.centerY() + 27f * u, p);
-            p.setTextAlign(Paint.Align.LEFT);
-
-            p.setColor(Theme.TEXT);
-            p.setTextSize(20f * u);
-            c.drawText(android.text.TextUtils.ellipsize(Util.capWords(ev.title), new android.text.TextPaint(p), textMax,
-                    android.text.TextUtils.TruncateAt.END).toString(), textX, mid - 12f * u, p);
-            p.setColor(Theme.TEXT_SOFT);
-            p.setTextSize(15f * u);
-            c.drawText(ev.date.format(DateTimeFormatter.ofPattern("EEEE", loc)), textX, mid + 9f * u, p);
-
-            float dr = 3f * u, step = 19f * u;
-            int cur = Math.max(0, Math.min(idx, events.size() - 1));
-            for (int i = 0; i < events.size(); i++) {
-                float dx = textX + dr + i * step, dy = mid + 31f * u;
-                boolean on = i == cur;
-                p.setStyle(on ? Paint.Style.FILL : Paint.Style.STROKE);
-                p.setStrokeWidth(1.5f * u);
-                p.setColor(on ? Theme.AMBER_LIGHT : Theme.MUTED);
-                c.drawCircle(dx, dy, dr, p);
+            p.setColor(isToday ? Theme.AMBER_LIGHT : Theme.MUTED);
+            p.setTextSize(11f * u);
+            c.drawText(d.format(dn).toUpperCase(loc), cx, y + 11f * u, p);
+            float cy = y + 12f * u + 6f * u + 13f * u;
+            if (isToday) {
+                RectF circle = new RectF(cx - 13f * u, cy - 13f * u, cx + 13f * u, cy + 13f * u);
+                p.setShader(new LinearGradient(0, circle.top, 0, circle.bottom, Theme.AMBER, Theme.AMBER_DEEP, Shader.TileMode.CLAMP));
+                c.drawOval(circle, p);
+                p.setShader(null);
             }
-            p.setStyle(Paint.Style.FILL);
-
-            float d = Math.min(zone * 0.86f, ch * 0.42f);
-            arrow(c, p, prevC, mid, d, true, u);
-            arrow(c, p, nextC, mid, d, false, u);
-        } else {
-            emptyCard(c, p, tileR, textX, mid, u, today, loc, allowed);
+            p.setColor(isToday ? 0xFFFFFFFF : Theme.TEXT);
+            p.setTextSize(15f * u);
+            c.drawText(String.valueOf(d.getDayOfMonth()), cx, cy + 5.5f * u, p);
         }
-        return bmp;
-    }
+        y += 46f * u + 8f * u;
 
-    private static void emptyCard(Canvas c, Paint p, RectF tileR, float textX, float mid, float u, LocalDate today,
-                                  Locale loc, boolean allowed) {
-        p.setTextAlign(Paint.Align.CENTER);
-        p.setColor(Theme.AMBER_LIGHT);
-        p.setTextSize(32f * u);
-        c.drawText(String.format(loc, "%02d", today.getDayOfMonth()), tileR.centerX(), tileR.centerY() + 2f * u, p);
-        p.setColor(Theme.MUTED);
-        p.setTextSize(17f * u);
-        c.drawText(today.format(DateTimeFormatter.ofPattern("MMM", loc)), tileR.centerX(), tileR.centerY() + 25f * u, p);
+        // ---- divider
+        Paint dv = new Paint();
+        dv.setColor(Theme.BORDER);
+        c.drawRect(left, y, right, y + Math.max(1f, u), dv);
+        y += 8f * u;
+
+        // ---- events
         p.setTextAlign(Paint.Align.LEFT);
-        p.setColor(Theme.TEXT);
-        p.setTextSize(20f * u);
-        c.drawText(allowed ? "No upcoming events" : "Calendar access needed", textX, mid - 4f * u, p);
-        p.setColor(Theme.MUTED);
-        p.setTextSize(15f * u);
-        c.drawText(allowed ? "Nothing in the next 120 days" : "Tap to open settings", textX, mid + 20f * u, p);
-    }
-
-    // ------------------------------------------------------------------ list mode (tall widgets)
-
-    private static Bitmap renderList(Context ctx, int w, int h, List<CalendarData.Event> events, boolean allowed) {
-        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(bmp);
-        float u = unit(ctx);
-        float rOut = outerRadius(ctx);
-        float r = 14f * u;
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setTypeface(Theme.futura(ctx));
-        LocalDate today = LocalDate.now();
-        Locale loc = Locale.getDefault();
-
-        float topH = 118f * u;
-        drawTop(c, p, new RectF(0, 0, w, topH), u, rOut, loc, today);
-
-        float y = topH + 8f * u;
-        float avail = h - y;
-        boolean has = allowed && !events.isEmpty();
-        if (!has) {
-            float hh = Math.min(avail, 110f * u);
-            RectF card = new RectF(0, y, w, y + hh);
-            panel(c, p, card, r, card.bottom >= h - 1 ? Math.max(r, rOut) : r, h(card, Theme.SURFACE_HI, Theme.SURFACE), u);
-            float tileSz = Math.min(hh * 0.76f, 90f * u);
-            float tl = Math.max(14f * u, rOut * 0.6f);
-            RectF tileR = new RectF(tl, card.centerY() - tileSz / 2f, tl + tileSz, card.centerY() + tileSz / 2f);
-            tile(c, p, tileR, u);
-            emptyCard(c, p, tileR, tileR.right + 16f * u, card.centerY(), u, today, loc, allowed);
+        float rowH = 40f * u, gap = 6f * u;
+        float bottom = box.bottom - 8f * u;
+        if (!allowed || events.isEmpty()) {
+            p.setColor(Theme.TEXT);
+            p.setTextSize(16f * u);
+            c.drawText(allowed ? "No upcoming events" : "Calendar access needed", left, y + 17f * u, p);
+            p.setColor(Theme.MUTED);
+            p.setTextSize(13f * u);
+            c.drawText(allowed ? "Nothing in the next 120 days" : "Tap to open settings", left, y + 36f * u, p);
             return bmp;
         }
-
-        float gap = 7f * u;
-        float rowH = 58f * u;
-        int rows = (int) Math.max(1, Math.min(events.size(), Math.floor((avail + gap) / (rowH + gap))));
-        float spare = (avail + gap) / rows - gap; // spread leftover height over the rows (up to 1.5x)
-        rowH = Math.min(spare, rowH * 1.5f);
+        int rows = (int) Math.max(0, Math.min(events.size(), Math.floor((bottom - y + gap) / (rowH + gap))));
+        long now = System.currentTimeMillis();
+        DateTimeFormatter tf = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(loc);
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("EEE d MMM", loc);
+        ZoneId zone = ZoneId.systemDefault();
         for (int i = 0; i < rows; i++) {
             CalendarData.Event ev = events.get(i);
-            RectF row = new RectF(0, y, w, y + rowH);
-            boolean atBottom = row.bottom >= h - 1;
-            panel(c, p, row, r, atBottom ? Math.max(r, rOut) : r, h(row, Theme.SURFACE_HI, Theme.SURFACE), u);
+            int col = ev.color != 0 ? (0xFF000000 | ev.color) : Theme.AMBER;
+            Paint bar = new Paint(Paint.ANTI_ALIAS_FLAG);
+            bar.setColor(col);
+            c.drawRoundRect(new RectF(left, y + 3f * u, left + 3.5f * u, y + rowH - 3f * u), 2f * u, 2f * u, bar);
+            float x = left + 12f * u;
 
-            float tileSz = rowH - 14f * u;
-            float tl = Math.max(8f * u, atBottom ? rOut * 0.5f : 8f * u);
-            RectF t = new RectF(tl, row.centerY() - tileSz / 2f, tl + tileSz, row.centerY() + tileSz / 2f);
-            panel(c, p, t, 8f * u, 8f * u, v(t, Theme.PANEL, Theme.DEEP), u);
-            p.setTextAlign(Paint.Align.CENTER);
+            // time line
+            String when;
+            if (ev.allDay) when = "All day";
+            else {
+                ZonedDateTime b = Instant.ofEpochMilli(ev.begin).atZone(zone), e = Instant.ofEpochMilli(ev.end).atZone(zone);
+                when = b.format(tf) + " \u2013 " + e.format(tf);
+            }
+            if (!ev.date.equals(today)) when = ev.date.format(df) + "  \u00B7  " + when;
+            p.setColor(Theme.MUTED);
+            p.setTextSize(12f * u);
+            c.drawText(when, x, y + 14f * u, p);
+            if (!ev.allDay) {
+                long mins = (ev.begin - now + 59_999L) / 60_000L;
+                String hint = null;
+                if (ev.begin <= now) hint = "now";
+                else if (mins <= 90) hint = mins <= 1 ? "in 1 minute" : "in " + mins + " minutes";
+                if (hint != null) {
+                    p.setColor(Theme.AMBER_LIGHT);
+                    p.setTextSkewX(-0.2f);
+                    c.drawText(hint, x + p.measureText(when) + 10f * u, y + 14f * u, p);
+                    p.setTextSkewX(0f);
+                }
+            }
+            // title
             p.setColor(Theme.TEXT);
-            p.setTextSize(Math.min(tileSz * 0.46f, 26f * u));
-            c.drawText(String.format(loc, "%02d", ev.date.getDayOfMonth()), t.centerX(), t.centerY() + 1f * u, p);
-            p.setColor(Theme.AMBER_LIGHT);
-            p.setTextSize(Math.min(tileSz * 0.26f, 14f * u));
-            c.drawText(ev.date.format(DateTimeFormatter.ofPattern("MMM", loc)), t.centerX(), t.bottom - 7f * u, p);
-            p.setTextAlign(Paint.Align.LEFT);
-
-            float tx = t.right + 14f * u;
-            float maxW = w - tx - 14f * u;
-            p.setColor(Theme.TEXT);
-            p.setTextSize(19f * u);
-            c.drawText(android.text.TextUtils.ellipsize(Util.capWords(ev.title), new android.text.TextPaint(p),
-                    maxW, android.text.TextUtils.TruncateAt.END).toString(), tx, row.centerY() - 3f * u, p);
-            p.setColor(Theme.TEXT_SOFT);
-            p.setTextSize(14f * u);
-            c.drawText(ev.date.format(DateTimeFormatter.ofPattern("EEEE", loc)), tx, row.centerY() + 16f * u, p);
+            p.setTextSize(17f * u);
+            String t = android.text.TextUtils.ellipsize(ev.title, new android.text.TextPaint(p), right - x,
+                    android.text.TextUtils.TruncateAt.END).toString();
+            c.drawText(t, x, y + 34f * u, p);
             y += rowH + gap;
         }
+        if (events.size() > rows && rows > 0) {
+            p.setTextAlign(Paint.Align.RIGHT);
+            p.setColor(Theme.DIM);
+            p.setTextSize(11f * u);
+            c.drawText("+" + (events.size() - rows) + " more", right, box.bottom - 4f * u, p);
+        }
         return bmp;
-    }
-
-    /** Circle with a chevron, like the preset's circle-chevron icons. */
-    private static void arrow(Canvas c, Paint p, float cx, float cy, float d, boolean left, float u) {
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(Theme.AMBER);
-        c.drawCircle(cx, cy, d / 2f, p);
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeCap(Paint.Cap.ROUND);
-        p.setStrokeJoin(Paint.Join.ROUND);
-        p.setStrokeWidth(d * 0.14f);
-        p.setColor(Theme.DEEP);
-        float k = d * 0.15f, dir = left ? -1f : 1f;
-        Path chev = new Path();
-        chev.moveTo(cx - dir * k * 0.6f, cy - k * 1.3f);
-        chev.lineTo(cx + dir * k * 0.8f, cy);
-        chev.lineTo(cx - dir * k * 0.6f, cy + k * 1.3f);
-        c.drawPath(chev, p);
-        p.setStyle(Paint.Style.FILL);
     }
 }

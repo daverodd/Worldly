@@ -17,8 +17,6 @@ import java.util.List;
 /** Week strip + next-event card. Reads the device calendar; refreshes every 15 minutes and at midnight. */
 public class CalendarWidgetProvider extends AppWidgetProvider {
     static final String ACTION_TICK = "app.currencyexchange.widget.CAL_TICK";
-    static final String ACTION_PREV = "app.currencyexchange.widget.CAL_PREV";
-    static final String ACTION_NEXT = "app.currencyexchange.widget.CAL_NEXT";
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager awm, int[] ids) {
@@ -45,12 +43,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context ctx, Intent intent) {
         super.onReceive(ctx, intent);
         String a = intent.getAction();
-        if (ACTION_PREV.equals(a) || ACTION_NEXT.equals(a)) {
-            int n = Math.max(1, CalendarData.upcoming(ctx).size());
-            int i = Store.calIdx(ctx) + (ACTION_NEXT.equals(a) ? 1 : -1);
-            Store.setCalIdx(ctx, ((i % n) + n) % n); // wraps around like the preset's list switch
-            updateAll(ctx);
-        } else if (ACTION_TICK.equals(a)
+        if (ACTION_TICK.equals(a)
                 || Intent.ACTION_BOOT_COMPLETED.equals(a)
                 || Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)
                 || Intent.ACTION_TIME_CHANGED.equals(a)
@@ -81,7 +74,6 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if (ids.length == 0) return;
         boolean allowed = CalendarData.allowed(ctx);
         List<CalendarData.Event> events = CalendarData.upcoming(ctx);
-        int idx = events.isEmpty() ? 0 : Math.max(0, Math.min(Store.calIdx(ctx), events.size() - 1));
         float density = ctx.getResources().getDisplayMetrics().density;
 
         PendingIntent settings = PendingIntent.getActivity(ctx, 20, new Intent(ctx, MainActivity.class),
@@ -94,6 +86,14 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             }
         }
 
+        PendingIntent add = calendar;
+        if (allowed) {
+            Intent ai = new Intent(Intent.ACTION_INSERT).setData(android.provider.CalendarContract.Events.CONTENT_URI);
+            if (ai.resolveActivity(ctx.getPackageManager()) != null) {
+                add = PendingIntent.getActivity(ctx, 25, ai, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            }
+        }
+
         for (int id : ids) {
             Bundle o = awm.getAppWidgetOptions(id);
             boolean land = ctx.getResources().getConfiguration().orientation
@@ -102,25 +102,11 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             int hdp = o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT : AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180);
             int w = clamp(Math.round(wdp * density), 300, 1100);
             int h = clamp(Math.round(hdp * density), 180, 1800);
-            Bitmap bmp = CalendarRenderer.render(ctx, w, h, events, idx, allowed);
-            RemoteViews rv;
-            if (CalendarRenderer.compact(ctx, w, h)) {
-                rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_calendar);
-                rv.setImageViewBitmap(R.id.img, bmp);
-                rv.setOnClickPendingIntent(R.id.open_top, calendar);
-                rv.setOnClickPendingIntent(R.id.open_card, allowed ? calendar : settings);
-                if (allowed && !events.isEmpty()) {
-                    rv.setOnClickPendingIntent(R.id.btn_prev, broadcast(ctx, ACTION_PREV, 22));
-                    rv.setOnClickPendingIntent(R.id.btn_next, broadcast(ctx, ACTION_NEXT, 23));
-                } else {
-                    rv.setOnClickPendingIntent(R.id.btn_prev, settings);
-                    rv.setOnClickPendingIntent(R.id.btn_next, settings);
-                }
-            } else {
-                rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_calendar_list);
-                rv.setImageViewBitmap(R.id.img, bmp);
-                rv.setOnClickPendingIntent(R.id.open_all, allowed ? calendar : settings);
-            }
+            Bitmap bmp = CalendarRenderer.render(ctx, w, h, events, allowed);
+            RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_calendar);
+            rv.setImageViewBitmap(R.id.img, bmp);
+            rv.setOnClickPendingIntent(R.id.open_all, allowed ? calendar : settings);
+            rv.setOnClickPendingIntent(R.id.btn_add, allowed ? add : settings);
             awm.updateAppWidget(id, rv);
         }
     }

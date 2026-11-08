@@ -25,7 +25,7 @@ The status text at the bottom of the settings screen shows what worked and what 
 |---|---|
 | **Currency Exchange** | World clocks, weather, market + Visa rates (the original KWGT widget) |
 | **SBB Clock** | Swiss railway station clock. Second hand: one lap in 58.5 s, then waits at 12; on the minute impulse the minute hand (and the hour hand with it) moves one minute with SBB's elastic swing, exactly when the second hand starts its next lap. Geometry and motion follow SBB's own digital clock (sbbUhr 1.3, dark-background face without frame) |
-| **Calendar** | Week strip (Sunday to Saturday, today highlighted) and your next 5 events with prev/next arrows. Reads the device calendar (READ_CALENDAR), no account or key. Wide sizes show one event with arrows; taller sizes show an event list |
+| **Calendar** | Agenda layout: big day number, week row (Sunday to Saturday, today in an amber circle), then your upcoming events with colour bar, time range and "in N minutes"; "+" adds an event. Reads the device calendar (READ_CALENDAR), no account or key. A taller widget lists more events, a wider one gives titles more room |
 
 Live updates: a widget cannot animate or tick by itself reliably, so a small foreground service ("Widgets running" notification) repaints the clocks at every minute and on every screen-on, and moves the SBB second hand ("Smooth" about 10 pictures a second, "Every second", or "Minute only"). With the screen off it does nothing. Alarms stay as a backup. Location is always where you are (last known device location, refreshed whenever you open the app). Fonts: Carbon+ (Currency) and Futura Medium BT (Calendar), both from the original KWGT presets.
 

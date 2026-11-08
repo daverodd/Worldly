@@ -19,12 +19,17 @@ import java.util.List;
 final class CalendarData {
     private CalendarData() {}
 
-    static final int MAX = 5;
+    static final int MAX = 8;
 
     static final class Event {
         final String title;
-        final LocalDate date; // the day shown on the tile
-        Event(String title, LocalDate date) { this.title = title; this.date = date; }
+        final LocalDate date; // the day the event is listed under
+        final boolean allDay;
+        final long begin, end; // epoch millis (all-day events: UTC midnights)
+        final int color;       // event / calendar colour, 0 if unknown
+        Event(String title, LocalDate date, boolean allDay, long begin, long end, int color) {
+            this.title = title; this.date = date; this.allDay = allDay; this.begin = begin; this.end = end; this.color = color;
+        }
     }
 
     static boolean allowed(Context c) {
@@ -41,13 +46,15 @@ final class CalendarData {
         ContentUris.appendId(b, now - 24L * 3600_000L);
         ContentUris.appendId(b, now + 120L * 24L * 3600_000L);
         String[] proj = {CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN,
-                CalendarContract.Instances.END, CalendarContract.Instances.ALL_DAY};
+                CalendarContract.Instances.END, CalendarContract.Instances.ALL_DAY,
+                "eventColor", "calendar_color"};
         try (Cursor cur = c.getContentResolver().query(b.build(), proj, "visible=1", null, "begin ASC, end ASC")) {
             if (cur == null) return out;
             while (cur.moveToNext() && out.size() < MAX) {
                 String title = cur.getString(0);
                 long begin = cur.getLong(1), end = cur.getLong(2);
                 boolean allDay = cur.getInt(3) == 1;
+                int color = cur.getInt(4) != 0 ? cur.getInt(4) : cur.getInt(5);
                 LocalDate day;
                 if (allDay) { // all-day events are stored as UTC midnights
                     day = Instant.ofEpochMilli(begin).atZone(ZoneOffset.UTC).toLocalDate();
@@ -60,7 +67,7 @@ final class CalendarData {
                     if (begin < now) day = today;
                 }
                 if (title == null || title.trim().isEmpty()) title = "(No title)";
-                out.add(new Event(title.trim(), day));
+                out.add(new Event(title.trim(), day, allDay, begin, end, color));
             }
         } catch (SecurityException | IllegalArgumentException e) {
             return new ArrayList<>();
