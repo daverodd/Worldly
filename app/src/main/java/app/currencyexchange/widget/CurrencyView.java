@@ -43,7 +43,7 @@ final class CurrencyView {
             R.layout.widget_k4, R.layout.widget_k5, R.layout.widget_k6};
 
     /** Widget height (dp) from which the variant with k rows fits. */
-    static int heightFor(int k) { return 144 + 54 * k; }
+    static int heightFor(int k) { return 158 + 54 * k; }
 
     private static final android.util.LruCache<String, Bitmap> PICS = new android.util.LruCache<>(60);
 
@@ -212,7 +212,7 @@ final class CurrencyView {
         gp.setShader(new LinearGradient(0, 0, 0, fr.bottom, 0x66000000, 0xF20B0E15, Shader.TileMode.CLAMP));
         c.drawRect(fr, gp);
 
-        float rx = 37f, ry = 35f;
+        float rx = 0f, ry = 0f; // outer corners are clipped by the layout (clipToOutline) so they match the card exactly
         Path outside = new Path();
         outside.addRoundRect(new RectF(0, 0, w, h),
                 new float[]{roundLeft ? rx : 0, roundLeft ? ry : 0, roundRight ? rx : 0, roundRight ? ry : 0,
