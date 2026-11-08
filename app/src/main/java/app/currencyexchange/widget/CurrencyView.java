@@ -102,7 +102,7 @@ final class CurrencyView {
             }
             txt(ctx, rv, id(ctx, "clk_day_" + i), now.format(dayF), reg, Theme.TEXT_SOFT, 11, false);
             txt(ctx, rv, id(ctx, "clk_time_" + i), now.format(timeF), bold, Theme.TEXT, 22, false);
-            txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 12, false);
+            txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 11, false);
         }
 
         // currency rows
@@ -252,7 +252,7 @@ final class CurrencyView {
         final int w = CW, h = CH;
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
-        final float split = Math.round(h * 0.9f);
+        final float split = Math.round(h * 0.94f);
         Paint base = new Paint();
         base.setColor(0xFF0B0E15);
         c.drawRect(0, 0, w, h, base);
