@@ -38,9 +38,9 @@ public class LiveService extends Service {
     // ------------------------------------------------------------------ control
 
     static boolean wanted(Context ctx) {
-        return WidgetProvider.widgetIds(ctx).length > 0
-                || SbbWidgetProvider.widgetIds(ctx).length > 0
-                || CalendarWidgetProvider.widgetIds(ctx).length > 0;
+        // Only the moving SBB second hand needs a running service (Android requires a notification for that).
+        // World clocks and the calendar run on exact alarms alone, with no notification.
+        return SbbWidgetProvider.widgetIds(ctx).length > 0 && !"minute".equals(Store.sbbMode(ctx));
     }
 
     static void ensure(Context ctx) {

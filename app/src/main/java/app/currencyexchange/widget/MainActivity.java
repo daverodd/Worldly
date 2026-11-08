@@ -221,9 +221,9 @@ public class MainActivity extends Activity {
         st.addView(banner);
         statusBox = vbox();
         st.addView(statusBox);
-        TextView foot = text("Clocks update every minute. Rates and weather refresh about every 30 minutes. A small "
-                + "\"Widgets running\" notification keeps the clocks live while the screen is on; it uses no battery with the "
-                + "screen off and you can hide it in the notification settings.", 12, Theme.uiMedium(this), Theme.DIM);
+        TextView foot = text("Clocks update every minute and rates and weather about every 30 minutes, with no notification. "
+                + "Only the SBB clock's moving second hand (Smooth / Every second) needs a small notification, because Android "
+                + "requires one for live animation; choose Minute only to avoid it.", 12, Theme.uiMedium(this), Theme.DIM);
         foot.setPadding(0, dp(10), 0, 0);
         st.addView(foot);
         updateStatus();
