@@ -18,13 +18,24 @@ final class Net {
         return new String(getBytes(url), StandardCharsets.UTF_8);
     }
 
+    /** GET that also sends a Referer (some sites, e.g. Visa, reject requests without one). */
+    static String get(String url, String referer) throws IOException {
+        return new String(getBytes(url, referer), StandardCharsets.UTF_8);
+    }
+
     static byte[] getBytes(String url) throws IOException {
+        return getBytes(url, null);
+    }
+
+    static byte[] getBytes(String url, String referer) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         try {
             c.setConnectTimeout(8000);
             c.setReadTimeout(10000);
             c.setRequestProperty("User-Agent", UA);
             c.setRequestProperty("Accept", "application/json, image/png, */*");
+            c.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+            if (referer != null) c.setRequestProperty("Referer", referer);
             int code = c.getResponseCode();
             if (code < 200 || code >= 300) throw new IOException("HTTP " + code + " for " + url);
             try (InputStream in = c.getInputStream()) {

@@ -112,14 +112,19 @@ final class Renderer {
 
         // fade flags to dark toward the bottom so the white text stays readable
         Paint gp = new Paint();
-        gp.setShader(new LinearGradient(0, y0 + 170 * 0.24f, 0, y0 + 170, 0x002E2E2E, 0xE62E2E2E,
+        gp.setShader(new LinearGradient(0, y0, 0, y0 + 170, 0x59000000, 0xE62E2E2E,
                 Shader.TileMode.CLAMP));
         c.drawRect(0, y0, W, y0 + 170, gp);
 
         // round the outer corners of the whole panel
-        Paint mask = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
-        c.drawRoundRect(panel, 15, 15, mask);
+        // (DST_IN only touches pixels it draws over, so instead clear everything OUTSIDE the
+        // rounded rectangle: inverse-filled path + CLEAR)
+        Path outside = new Path();
+        outside.addRoundRect(panel, 15, 15, Path.Direction.CW);
+        outside.setFillType(Path.FillType.INVERSE_WINDING);
+        Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG);
+        clear.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+        c.drawPath(outside, clear);
         c.restoreToCount(layer);
 
         DateTimeFormatter dayF = DateTimeFormatter.ofPattern("EEEE", Locale.getDefault());
@@ -136,7 +141,7 @@ final class Renderer {
     // ------------------------------------------------------------------ currency rows
 
     private static void drawRow(Context ctx, Canvas c, Typeface reg, int i, String to) {
-        float y = 250 + i * 120f;
+        float y = 255 + i * 120f; // clock panel ends at y=245: same 10-unit gap as between the rows
         float cy = y + 55;
         boolean light = (i % 2 == 0);
         fillRound(c, new RectF(0, y, W, y + 110), 15,

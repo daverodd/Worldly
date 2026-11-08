@@ -111,8 +111,12 @@ public class MainActivity extends Activity {
         long t = Store.lastFetch(this);
         String last = t == 0 ? "never"
                 : DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(t));
+        String visaErr = Store.sp(this).getString("visaErr", "");
+        String wxErr = Store.sp(this).getString("wxErr", "");
         status.setText("Last successful data refresh: " + last
-                + "\nData also refreshes automatically about every 30 minutes; clocks update every minute.");
+                + "\nData also refreshes automatically about every 30 minutes; clocks update every minute."
+                + (visaErr.isEmpty() ? "\nVisa rate: OK" : "\nVisa rate problem: " + visaErr)
+                + (wxErr.isEmpty() ? "\nWeather: OK" : "\nWeather problem: " + wxErr));
     }
 
     // ---- location ----
