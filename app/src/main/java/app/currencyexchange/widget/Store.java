@@ -12,7 +12,7 @@ final class Store {
     private Store() {}
 
     static final String[] DEF_CITIES = {"Mexico City", "Bucharest", "Brussels", "Charlotte"};
-    static final String[] DEF_FROM = {"USD", "DKK", "EUR", "RON"};
+    static final String[] DEF_FROM = {"USD", "EUR", "GBP", "CHF", "CNY", "JPY"};
 
     static SharedPreferences sp(Context c) {
         return c.getApplicationContext().getSharedPreferences("cfg", Context.MODE_PRIVATE);
@@ -20,7 +20,7 @@ final class Store {
 
     // ---- settings ----
     static String city(Context c, int i) { return sp(c).getString("city" + i, DEF_CITIES[i]); }
-    static String from(Context c, int i) { return sp(c).getString("from" + i, DEF_FROM[i]); }
+    static String from(Context c, int i) { return sp(c).getString("fx" + i, DEF_FROM[i]); }
     static String to(Context c) { return sp(c).getString("to", "COP"); }
     /** Visa fee as plain text, never with a trailing ".0" ("2", not "2.0"). */
     static String feeText(Context c) { return Util.cleanNum(sp(c).getString("feeTxt", "2")); }

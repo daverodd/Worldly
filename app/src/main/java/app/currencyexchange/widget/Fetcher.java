@@ -55,7 +55,7 @@ final class Fetcher {
         // Currency rows
         Flags.ensureFlag(ctx, Util.countryOfCurrency(to));
         Flags.ensureVisa(ctx);
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < Store.DEF_FROM.length; i++) {
             String from = Store.from(ctx, i).trim();
             Flags.ensureFlag(ctx, Util.countryOfCurrency(from));
             try {

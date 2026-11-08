@@ -87,7 +87,7 @@ final class CurrencyView {
         String to = Store.to(ctx).trim().toUpperCase(Locale.ROOT);
         Bitmap visaLogo = visaLogo(ctx);
         Bitmap toFlag = flagOrLabel(ctx, Util.countryOfCurrency(to), to);
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < Store.DEF_FROM.length; i++) {
             String from = Store.from(ctx, i).trim().toUpperCase(Locale.ROOT);
             rv.setImageViewBitmap(id(ctx, "fl_a_" + i), flagOrLabel(ctx, Util.countryOfCurrency(from), from));
             txt(ctx, rv, id(ctx, "code_a_" + i), from, reg, Theme.TEXT, 15, false);
@@ -176,11 +176,11 @@ final class CurrencyView {
         gp.setShader(new LinearGradient(0, 0, 0, fr.bottom, 0x66000000, 0xF20B0E15, Shader.TileMode.CLAMP));
         c.drawRect(fr, gp);
 
-        float rad = 30f;
+        float rx = 62f, ry = 58f;
         Path outside = new Path();
         outside.addRoundRect(new RectF(0, 0, w, h),
-                new float[]{roundLeft ? rad : 0, roundLeft ? rad : 0, roundRight ? rad : 0, roundRight ? rad : 0,
-                        roundRight ? rad : 0, roundRight ? rad : 0, roundLeft ? rad : 0, roundLeft ? rad : 0},
+                new float[]{roundLeft ? rx : 0, roundLeft ? ry : 0, roundRight ? rx : 0, roundRight ? ry : 0,
+                        roundRight ? rx : 0, roundRight ? ry : 0, roundLeft ? rx : 0, roundLeft ? ry : 0},
                 Path.Direction.CW);
         outside.setFillType(Path.FillType.INVERSE_WINDING);
         Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG);

@@ -44,7 +44,7 @@ import java.util.Locale;
 /** Settings screen, styled like SAB Monitor (graphite cards, amber accent). Cities and currencies are picked from lists. */
 public class MainActivity extends Activity {
     private final TextView[] cityBtn = new TextView[4];
-    private final TextView[] fromBtn = new TextView[4];
+    private final TextView[] fromBtn = new TextView[6];
     private TextView toBtn;
     private EditText fee;
     private String sbbMode;
@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
 
         // ---- world clocks: pick from a list ----
         LinearLayout clocks = card(col, "WORLD CLOCKS");
-        for (int i = 0; i < 4; i += 2) {
+        for (int i = 0; i < 6; i += 2) {
             LinearLayout row = hbox();
             for (int j = 0; j < 2; j++) {
                 final int idx = i + j;
@@ -101,12 +101,12 @@ public class MainActivity extends Activity {
 
         // ---- currency rows: pick from a list ----
         LinearLayout rates = card(col, "CURRENCY ROWS");
-        for (int i = 0; i < 4; i += 2) {
+        for (int i = 0; i < 6; i += 2) {
             LinearLayout row = hbox();
             for (int j = 0; j < 2; j++) {
                 final int idx = i + j;
                 fromBtn[idx] = picker(currencyLabel(Store.from(this, idx)), v -> pickCurrency("Currency " + (idx + 1), code -> {
-                    Store.sp(this).edit().putString("from" + idx, code).apply();
+                    Store.sp(this).edit().putString("fx" + idx, code).apply();
                     fromBtn[idx].setText(currencyLabel(code));
                     refreshNow("Updating rates…");
                 }));
