@@ -349,13 +349,13 @@
                     android:gravity="center_vertical">
                     <ImageView
                         android:id="@+id/mkt_val_0"
-                        android:layout_width="44dp"
-                        android:layout_height="9dp"
+                        android:layout_width="52dp"
+                        android:layout_height="11dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_0"
-                        android:layout_width="34dp"
-                        android:layout_height="9dp"
+                        android:layout_width="42dp"
+                        android:layout_height="11dp"
                         android:layout_marginStart="8dp"
                         android:scaleType="fitStart" />
                 </LinearLayout>
@@ -367,12 +367,12 @@
                     android:layout_marginTop="2dp">
                     <ImageView
                         android:id="@+id/visa_val_0"
-                        android:layout_width="44dp"
-                        android:layout_height="9dp"
+                        android:layout_width="52dp"
+                        android:layout_height="11dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_0"
-                        android:layout_width="34dp"
+                        android:layout_width="42dp"
                         android:layout_height="16dp"
                         android:layout_marginStart="8dp"
                         android:scaleType="fitStart" />
@@ -442,13 +442,13 @@
                     android:gravity="center_vertical">
                     <ImageView
                         android:id="@+id/mkt_val_1"
-                        android:layout_width="44dp"
-                        android:layout_height="9dp"
+                        android:layout_width="52dp"
+                        android:layout_height="11dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/mkt_lbl_1"
-                        android:layout_width="34dp"
-                        android:layout_height="9dp"
+                        android:layout_width="42dp"
+                        android:layout_height="11dp"
                         android:layout_marginStart="8dp"
                         android:scaleType="fitStart" />
                 </LinearLayout>
@@ -460,12 +460,12 @@
                     android:layout_marginTop="2dp">
                     <ImageView
                         android:id="@+id/visa_val_1"
-                        android:layout_width="44dp"
-                        android:layout_height="9dp"
+                        android:layout_width="52dp"
+                        android:layout_height="11dp"
                         android:scaleType="fitEnd" />
                     <ImageView
                         android:id="@+id/visa_logo_1"
-                        android:layout_width="34dp"
+                        android:layout_width="42dp"
                         android:layout_height="16dp"
                         android:layout_marginStart="8dp"
                         android:scaleType="fitStart" />
