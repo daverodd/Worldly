@@ -60,7 +60,12 @@ public class WidgetProvider extends AppWidgetProvider {
         if (widgetIds(ctx).length == 0) return;
         // Arm the next minute FIRST so a failure while drawing can never break the chain.
         try { scheduleNextTick(ctx); } catch (Exception ignored) { }
-        try { updateAll(ctx); } catch (Throwable ignored) { }
+        try {
+            updateAll(ctx);
+            Store.diag(ctx, "clockOk", System.currentTimeMillis(), "alarm", null);
+        } catch (Throwable t) {
+            Store.diag(ctx, "clockErr", System.currentTimeMillis(), "alarm", t.getClass().getSimpleName() + ": " + t.getMessage());
+        }
         LiveService.ensure(ctx);
         try {
             ensurePeriodicJob(ctx);

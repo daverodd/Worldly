@@ -43,6 +43,7 @@ import java.util.Locale;
 
 /** Settings screen, styled like SAB Monitor (graphite cards, amber accent). Cities and currencies are picked from lists. */
 public class MainActivity extends Activity {
+    private TextView batStatus, batButton;
     private final TextView[] cityBtn = new TextView[4];
     private final TextView[] fromBtn = new TextView[6];
     private TextView toBtn;
@@ -192,6 +193,18 @@ public class MainActivity extends Activity {
         perms.addView(calStatus);
         calButton = secondaryButton("Allow calendar", v -> requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, REQ_ALL));
         perms.addView(calButton, matchWrap(8));
+        batStatus = text("", 13, Theme.uiSemi(this), Theme.TEXT);
+        batStatus.setPadding(0, dp(12), 0, 0);
+        perms.addView(batStatus);
+        batButton = secondaryButton("Allow running in background", v -> {
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        android.net.Uri.parse("package:" + getPackageName())));
+            } catch (Exception e) {
+                startActivity(new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            }
+        });
+        perms.addView(batButton, matchWrap(8));
         updatePermissionCards();
 
         // ---- actions ----
@@ -298,6 +311,12 @@ public class MainActivity extends Activity {
                 : "Needs calendar access for the Calendar widget. Events never leave your phone.");
         calStatus.setTextColor(cal ? Theme.TEXT : Theme.AMBER);
         calButton.setVisibility(cal ? View.GONE : View.VISIBLE);
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        boolean bat = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
+        batStatus.setText(bat ? "Background allowed - the clocks keep ticking every minute."
+                : "Battery saving may pause the clocks. Allow Worldly to run in the background.");
+        batStatus.setTextColor(bat ? Theme.TEXT : Theme.AMBER);
+        batButton.setVisibility(bat ? View.GONE : View.VISIBLE);
     }
 
     private void updateStatus() {
@@ -316,6 +335,17 @@ public class MainActivity extends Activity {
         String wxErr = Store.sp(this).getString("wxErr", "");
         statusRow("Weather", wxErr.isEmpty() && Store.weather(this) != null,
                 !wxErr.isEmpty() ? wxErr : (Store.weather(this) == null ? "Waiting for first update" : "Open-Meteo"));
+
+        android.content.SharedPreferences sp = Store.sp(this);
+        long ok = sp.getLong("clockOkAt", 0), bad = sp.getLong("clockErrAt", 0);
+        java.text.SimpleDateFormat hms = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault());
+        if (bad > ok) {
+            statusRow("Clock updates", false, "Failed at " + hms.format(new Date(bad)) + " (" + sp.getString("clockErrWho", "")
+                    + "): " + sp.getString("clockErrMsg", ""));
+        } else {
+            statusRow("Clock updates", ok > 0 && System.currentTimeMillis() - ok < 3 * 60_000L,
+                    ok == 0 ? "No automatic update yet" : "Last automatic update " + hms.format(new Date(ok)) + " (" + sp.getString("clockOkWho", "") + ")");
+        }
 
         String geoErr = Store.sp(this).getString("geoErr", "");
         statusRow("Cities", geoErr.isEmpty(), geoErr.isEmpty() ? "All cities found" : geoErr);

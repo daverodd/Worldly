@@ -48,6 +48,10 @@ final class CurrencyView {
     private static final android.util.LruCache<String, Bitmap> PICS = new android.util.LruCache<>(60);
 
     /** Variant with k currency rows (1..6). */
+    private static void txtF(RemoteViews rv, int viewId, String s, Typeface tf, int color, float sizeDp, float fill) {
+        rv.setImageViewBitmap(viewId, TextBmp.make(tf, sizeDp * 2.5f, fill, false, false, s, color));
+    }
+
     static RemoteViews build(Context ctx, int k) {
         Typeface reg = Theme.uiMedium(ctx), bold = Theme.uiBold(ctx);
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), LAYOUTS[k - 1]);
@@ -96,9 +100,9 @@ final class CurrencyView {
             } else {
                 rv.setImageViewBitmap(id(ctx, "clk_bg_" + i), pcs[0]);
             }
-            txt(ctx, rv, id(ctx, "clk_day_" + i), now.format(dayF), reg, Theme.TEXT_SOFT, 11, true);
-            txt(ctx, rv, id(ctx, "clk_time_" + i), now.format(timeF), bold, Theme.TEXT, 22, true);
-            txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 12, true);
+            txt(ctx, rv, id(ctx, "clk_day_" + i), now.format(dayF), reg, Theme.TEXT_SOFT, 11, false);
+            txt(ctx, rv, id(ctx, "clk_time_" + i), now.format(timeF), bold, Theme.TEXT, 22, false);
+            txt(ctx, rv, id(ctx, "clk_city_" + i), Util.capWords(city), reg, Theme.TEXT, 12, false);
         }
 
         // currency rows
@@ -112,18 +116,18 @@ final class CurrencyView {
             rv.setImageViewBitmap(id(ctx, "fl_b_" + i), toFlag);
             txt(ctx, rv, id(ctx, "code_b_" + i), to, reg, Theme.TEXT, 15, false);
             double market = Store.rate(ctx, from, to);
-            txt(ctx, rv, id(ctx, "mkt_lbl_" + i), "Market", reg, Theme.MUTED, 12.5f, false);
-            txt(ctx, rv, id(ctx, "mkt_val_" + i), Util.fmt0(market), reg, Theme.TEXT, 14, false);
+            txt(ctx, rv, id(ctx, "mkt_lbl_" + i), "Market", reg, Theme.MUTED, 11, false);
+            txtF(rv, id(ctx, "mkt_val_" + i), Util.fmt0(market), reg, Theme.TEXT, 12.5f, 0.92f);
             rv.setImageViewBitmap(id(ctx, "visa_logo_" + i), visaLogo);
             double visa = Util.alignToMarket(Store.visa(ctx, from, to), market);
             int vv = id(ctx, "visa_val_" + i);
             if (!Double.isNaN(visa)) {
-                txt(ctx, rv, vv, Util.fmt0(visa), reg, Theme.TEXT_SOFT, 12, false);
+                txtF(rv, vv, Util.fmt0(visa), reg, Theme.TEXT_SOFT, 11.5f, 0.86f);
             } else if (!Double.isNaN(market)) {
                 // Visa did not answer: estimate = market + fee, marked "~" and muted
-                txt(ctx, rv, vv, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), reg, Theme.MUTED, 12, false);
+                txtF(rv, vv, "~" + Util.fmt0(market * (1.0 + Store.fee(ctx) / 100.0)), reg, Theme.MUTED, 11.5f, 0.86f);
             } else {
-                txt(ctx, rv, vv, "", reg, Theme.MUTED, 12, false);
+                txt(ctx, rv, vv, "", reg, Theme.MUTED, 11.5f, false);
             }
         }
         return rv;

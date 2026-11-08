@@ -52,6 +52,11 @@ final class Store {
     }
 
     // ---- cache ----
+    /** Last clock update result, shown in the app's Status card. */
+    static void diag(Context c, String key, long when, String who, String err) {
+        sp(c).edit().putLong(key + "At", when).putString(key + "Who", who).putString(key + "Msg", err == null ? "" : err).apply();
+    }
+
     static long lastFetch(Context c) { return sp(c).getLong("lastFetch", 0L); }
     static void setLastFetch(Context c) { sp(c).edit().putLong("lastFetch", System.currentTimeMillis()).apply(); }
 

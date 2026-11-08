@@ -73,13 +73,18 @@ public class LiveService extends Service {
         screen = new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {
-                if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) start();
+                String a = i.getAction();
+                if (Intent.ACTION_TIME_TICK.equals(a)) {
+                    // the system's own minute tick: the most reliable trigger for the clocks
+                    if (on) handler.post(() -> minuteWork(getApplicationContext(), "tick"));
+                } else if (Intent.ACTION_SCREEN_ON.equals(a)) start();
                 else stopLoops();
             }
         };
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_SCREEN_ON);
         f.addAction(Intent.ACTION_SCREEN_OFF);
+        f.addAction(Intent.ACTION_TIME_TICK);
         registerReceiver(screen, f);
     }
 
@@ -156,16 +161,31 @@ public class LiveService extends Service {
                 stopSelf();
                 return;
             }
-            try { WidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
-            try { CalendarWidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
-            if ("minute".equals(Store.sbbMode(ctx))) {
-                try { SbbWidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
-            }
+            minuteWork(ctx, "service");
             long now = System.currentTimeMillis();
             long next = (now / 60_000L + 1) * 60_000L + 100L;
             handler.postDelayed(this, Math.max(1000L, next - now));
         }
     };
+
+    private static long lastWork;
+
+    /** Repaint Currency + Calendar (+ a still SBB picture); runs at most once per minute. */
+    static synchronized void minuteWork(Context ctx, String who) {
+        long now = System.currentTimeMillis();
+        if (now / 60_000L == lastWork / 60_000L) return; // already done this minute
+        lastWork = now;
+        try {
+            WidgetProvider.updateAll(ctx);
+            Store.diag(ctx, "clockOk", now, who, null);
+        } catch (Throwable t) {
+            Store.diag(ctx, "clockErr", now, who, t.getClass().getSimpleName() + ": " + t.getMessage());
+        }
+        try { CalendarWidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
+        if ("minute".equals(Store.sbbMode(ctx))) {
+            try { SbbWidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
+        }
+    }
 
     /** SBB second hand. */
     private final Runnable frameLoop = new Runnable() {
