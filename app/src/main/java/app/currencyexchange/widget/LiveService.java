@@ -20,44 +20,45 @@ import android.os.PowerManager;
 import java.time.ZoneId;
 
 /**
- * Keeps the red second hand moving. A widget cannot animate itself, so while the screen is on this service
- * pushes a fresh picture of the clock about 10 times a second ("smooth") or once a second. When the screen
- * turns off it stops drawing completely (no battery use); the per-minute alarm keeps the minute step exact.
+ * Keeps all widgets live while the screen is on, independent of alarms (which some phones delay):
+ *  - on every screen-on and at every minute boundary it repaints the clocks (Currency + Calendar + SBB),
+ *  - for the SBB clock it also pushes frames for the second hand (about 10 a second, or 1 a second).
+ * With the screen off it does nothing at all, so there is no battery cost; the alarm chains stay as a backup.
  */
-public class SbbService extends Service {
-    private static final String CHANNEL = "sbb_clock";
+public class LiveService extends Service {
+    private static final String CHANNEL = "widgets_live";
     private static final int NOTIF_ID = 42;
 
     private HandlerThread thread;
     private Handler handler;
     private BroadcastReceiver screen;
     private Bitmap buf;
-    private boolean looping;
+    private boolean on;
 
     // ------------------------------------------------------------------ control
 
-    /** Start (or keep) the service when a clock widget exists and live mode is on; stop it otherwise. */
+    static boolean wanted(Context ctx) {
+        return WidgetProvider.widgetIds(ctx).length > 0
+                || SbbWidgetProvider.widgetIds(ctx).length > 0
+                || CalendarWidgetProvider.widgetIds(ctx).length > 0;
+    }
+
     static void ensure(Context ctx) {
         if (!wanted(ctx)) {
             stop(ctx);
             return;
         }
         try {
-            Intent i = new Intent(ctx, SbbService.class);
+            Intent i = new Intent(ctx, LiveService.class);
             if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i);
             else ctx.startService(i);
         } catch (Exception ignored) {
-            // The system refused a background start (rare). The per-minute alarm still keeps the clock correct,
-            // and opening the app starts live mode again.
+            // A background start can be refused; the alarm chains still run and opening the app restarts this.
         }
     }
 
     static void stop(Context ctx) {
-        try { ctx.stopService(new Intent(ctx, SbbService.class)); } catch (Exception ignored) { }
-    }
-
-    static boolean wanted(Context ctx) {
-        return SbbWidgetProvider.widgetIds(ctx).length > 0 && !"minute".equals(Store.sbbMode(ctx));
+        try { ctx.stopService(new Intent(ctx, LiveService.class)); } catch (Exception ignored) { }
     }
 
     // ------------------------------------------------------------------ service
@@ -66,14 +67,14 @@ public class SbbService extends Service {
     public void onCreate() {
         super.onCreate();
         startAsForeground();
-        thread = new HandlerThread("sbb-clock");
+        thread = new HandlerThread("widgets-live");
         thread.start();
         handler = new Handler(thread.getLooper());
         screen = new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {
-                if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) startLoop();
-                else stopLoop();
+                if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) start();
+                else stopLoops();
             }
         };
         IntentFilter f = new IntentFilter();
@@ -84,18 +85,19 @@ public class SbbService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        startAsForeground(); // every startForegroundService call must be answered
         if (!wanted(this)) {
             stopSelf();
             return START_NOT_STICKY;
         }
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (pm.isInteractive()) startLoop();
+        if (pm.isInteractive()) start();
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        stopLoop();
+        stopLoops();
         try { unregisterReceiver(screen); } catch (Exception ignored) { }
         if (thread != null) thread.quitSafely();
         super.onDestroy();
@@ -107,7 +109,7 @@ public class SbbService extends Service {
     private void startAsForeground() {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "SBB clock second hand", NotificationManager.IMPORTANCE_MIN);
+            NotificationChannel ch = new NotificationChannel(CHANNEL, "Keeping widgets live", NotificationManager.IMPORTANCE_MIN);
             ch.setShowBadge(false);
             nm.createNotificationChannel(ch);
         }
@@ -115,8 +117,8 @@ public class SbbService extends Service {
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_clock)
-                .setContentTitle("SBB clock running")
-                .setContentText("Moves the second hand while the screen is on")
+                .setContentTitle("Widgets running")
+                .setContentText("Updates the clocks every minute while the screen is on")
                 .setContentIntent(open)
                 .setOngoing(true)
                 .build();
@@ -127,44 +129,66 @@ public class SbbService extends Service {
         }
     }
 
-    // ------------------------------------------------------------------ frame loop
+    // ------------------------------------------------------------------ loops
 
-    private final Runnable frame = new Runnable() {
+    private void start() {
+        if (on) return;
+        on = true;
+        handler.post(minuteLoop);
+        handler.post(frameLoop);
+    }
+
+    private void stopLoops() {
+        on = false;
+        if (handler != null) {
+            handler.removeCallbacks(minuteLoop);
+            handler.removeCallbacks(frameLoop);
+        }
+    }
+
+    /** Immediately, then at every minute boundary: repaint Currency + Calendar (+ a still SBB picture). */
+    private final Runnable minuteLoop = new Runnable() {
         @Override
         public void run() {
-            if (!looping) return;
+            if (!on) return;
             Context ctx = getApplicationContext();
-            int[] ids = SbbWidgetProvider.widgetIds(ctx);
-            if (ids.length == 0 || "minute".equals(Store.sbbMode(ctx))) {
+            if (!wanted(ctx)) {
                 stopSelf();
                 return;
             }
+            try { WidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
+            try { CalendarWidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
+            if ("minute".equals(Store.sbbMode(ctx))) {
+                try { SbbWidgetProvider.updateAll(ctx); } catch (Throwable ignored) { }
+            }
+            long now = System.currentTimeMillis();
+            long next = (now / 60_000L + 1) * 60_000L + 100L;
+            handler.postDelayed(this, Math.max(1000L, next - now));
+        }
+    };
+
+    /** SBB second hand. */
+    private final Runnable frameLoop = new Runnable() {
+        @Override
+        public void run() {
+            if (!on) return;
+            Context ctx = getApplicationContext();
+            String mode = Store.sbbMode(ctx);
+            int[] ids = SbbWidgetProvider.widgetIds(ctx);
+            if (ids.length == 0 || "minute".equals(mode)) return; // nothing to animate; minuteLoop keeps going
+            boolean smooth = "smooth".equals(mode);
             try {
                 long now = System.currentTimeMillis();
-                ZoneId zone = SbbWidgetProvider.zone(ctx);
+                ZoneId zone = ZoneId.systemDefault();
                 // the elastic swing of the minute hand is only shown in smooth mode; other modes keep it settled
-                boolean smooth = "smooth".equals(Store.sbbMode(ctx));
                 buf = SbbRenderer.render(now, zone, SbbRenderer.SIZE, buf, smooth);
                 SbbWidgetProvider.pushFrame(ctx, ids, buf);
             } catch (Throwable ignored) { }
             long now = System.currentTimeMillis();
-            boolean smooth = "smooth".equals(Store.sbbMode(ctx));
             long msIn = Math.floorMod(now, 60_000L);
-            // faster frames while the minute hand is swinging (its wobble has a 0.3 s period)
-            long step = SbbClock.easing(msIn) ? 33L : 100L;
+            long step = SbbClock.easing(msIn) ? 33L : 100L; // faster while the minute hand swings (0.3 s wobble)
             long next = smooth ? (now / step + 1) * step + 3L : (now / 1000L + 1) * 1000L + 20L;
             handler.postDelayed(this, Math.max(15L, next - now));
         }
     };
-
-    private void startLoop() {
-        if (looping) return;
-        looping = true;
-        handler.post(frame);
-    }
-
-    private void stopLoop() {
-        looping = false;
-        if (handler != null) handler.removeCallbacks(frame);
-    }
 }

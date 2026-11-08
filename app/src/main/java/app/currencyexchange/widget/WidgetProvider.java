@@ -35,6 +35,7 @@ public class WidgetProvider extends AppWidgetProvider {
         JobScheduler js = (JobScheduler) ctx.getSystemService(Context.JOB_SCHEDULER_SERVICE);
         js.cancel(JOB_PERIODIC);
         js.cancel(JOB_NOW);
+        if (!LiveService.wanted(ctx)) LiveService.stop(ctx);
     }
 
     @Override
@@ -56,6 +57,7 @@ public class WidgetProvider extends AppWidgetProvider {
         // Arm the next minute FIRST so a failure while drawing can never break the chain.
         try { scheduleNextTick(ctx); } catch (Exception ignored) { }
         try { updateAll(ctx); } catch (Throwable ignored) { }
+        LiveService.ensure(ctx);
         try {
             ensurePeriodicJob(ctx);
             if (System.currentTimeMillis() - Store.lastFetch(ctx) > STALE_MS) requestRefresh(ctx);

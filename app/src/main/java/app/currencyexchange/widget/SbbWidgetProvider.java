@@ -9,10 +9,9 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.widget.RemoteViews;
 
-import java.time.DateTimeException;
 import java.time.ZoneId;
 
-/** The Swiss railway clock widget. Per-minute alarm chain for the steps, {@link SbbService} for the live second hand. */
+/** The Swiss railway clock widget. Per-minute alarm chain for the steps, {@link LiveService} for the live second hand. */
 public class SbbWidgetProvider extends AppWidgetProvider {
     static final String ACTION_TICK = "app.currencyexchange.widget.SBB_TICK";
 
@@ -29,7 +28,7 @@ public class SbbWidgetProvider extends AppWidgetProvider {
     @Override
     public void onDisabled(Context ctx) {
         Alarms.cancel(ctx, tickIntent(ctx));
-        SbbService.stop(ctx);
+        if (!LiveService.wanted(ctx)) LiveService.stop(ctx);
     }
 
     @Override
@@ -51,19 +50,15 @@ public class SbbWidgetProvider extends AppWidgetProvider {
             Alarms.at(ctx, (System.currentTimeMillis() / 60_000L + 1) * 60_000L + 150L, tickIntent(ctx));
         } catch (Exception ignored) { }
         try { updateAll(ctx); } catch (Throwable ignored) { }
-        SbbService.ensure(ctx);
+        LiveService.ensure(ctx);
     }
 
     static int[] widgetIds(Context ctx) {
         return AppWidgetManager.getInstance(ctx).getAppWidgetIds(new ComponentName(ctx, SbbWidgetProvider.class));
     }
 
-    /** Clock time zone: the one typed in settings, or the device's. */
+    /** The clock always shows the time where you are (the device's current time zone). */
     static ZoneId zone(Context ctx) {
-        String id = Store.sbbTz(ctx);
-        if (!id.isEmpty()) {
-            try { return ZoneId.of(id); } catch (DateTimeException ignored) { }
-        }
         return ZoneId.systemDefault();
     }
 

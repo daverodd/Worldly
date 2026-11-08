@@ -28,33 +28,37 @@ import java.util.Locale;
 final class CalendarRenderer {
     private CalendarRenderer() {}
 
+    /** Design width in units; heights adapt to the widget. */
+    static final float DESIGN_W = 500f, DESIGN_H = 238f;
+
+    /** True when the widget is wide enough for the one-event card; taller widgets get an event list instead. */
+    static boolean compact(int w, int h) {
+        return h <= DESIGN_H * (w / DESIGN_W) * 1.3f;
+    }
+
     static Bitmap render(Context ctx, int w, int h, List<CalendarData.Event> events, int idx, boolean allowed) {
-        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(bmp);
-        Typeface font = Theme.futura(ctx);
-        float u = Math.min(w / 500f, h / 238f); // design size is 500 x 238 units
+        return compact(w, h) ? renderCard(ctx, w, h, events, idx, allowed) : renderList(ctx, w, h, events, allowed);
+    }
+
+    // ------------------------------------------------------------------ shared: header + week strip
+
+    private static void drawTop(Canvas c, Paint p, RectF top, float u, Locale loc, LocalDate today) {
         float r = 14f * u;
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setTypeface(font);
-
-        LocalDate today = LocalDate.now();
-        Locale loc = Locale.getDefault();
-
-        // ---------------- top block: header + week strip (top half)
-        RectF top = new RectF(0, 0, w, h * 0.50f);
-        p.setShader(new LinearGradient(0, 0, w, 0, Theme.HEADER, Theme.PANEL, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(0, 0, top.right, 0, Theme.HEADER, Theme.PANEL, Shader.TileMode.CLAMP));
         c.drawRoundRect(top, r, r, p);
         p.setShader(null);
         border(c, top, r, u);
 
+        float th = top.height();
         p.setColor(Theme.TEXT);
         p.setTextSize(20f * u);
+        p.setTextAlign(Paint.Align.LEFT);
         String head = today.format(DateTimeFormatter.ofPattern("MMM yyyy", loc)) + " | Week "
                 + today.get(WeekFields.of(DayOfWeek.SUNDAY, 1).weekOfYear());
-        c.drawText(head, 16f * u, h * 0.105f + 7f * u, p);
+        c.drawText(head, top.left + 16f * u, top.top + th * 0.21f + 7f * u, p);
 
         float pad = 7f * u, gap = 4f * u;
-        RectF strip = new RectF(pad, h * 0.20f, w - pad, top.bottom - pad);
+        RectF strip = new RectF(top.left + pad, top.top + th * 0.40f, top.right - pad, top.bottom - pad);
         LocalDate sunday = today.minusDays(today.getDayOfWeek().getValue() % 7); // ISO: Sunday = 7 -> 0
         float cw = (strip.width() - 6 * gap) / 7f;
         DateTimeFormatter dayName = DateTimeFormatter.ofPattern("EEE", loc);
@@ -78,8 +82,22 @@ final class CalendarRenderer {
             c.drawText(String.format(loc, "%02d", d.getDayOfMonth()), cx, cy + 21f * u, p);
         }
         p.setTextAlign(Paint.Align.LEFT);
+    }
 
-        // ---------------- event card (bottom half)
+    // ------------------------------------------------------------------ card mode (wide widgets)
+
+    private static Bitmap renderCard(Context ctx, int w, int h, List<CalendarData.Event> events, int idx, boolean allowed) {
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        float u = Math.min(w / DESIGN_W, h / DESIGN_H);
+        float r = 14f * u;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setTypeface(Theme.futura(ctx));
+        LocalDate today = LocalDate.now();
+        Locale loc = Locale.getDefault();
+
+        drawTop(c, p, new RectF(0, 0, w, h * 0.50f), u, loc, today);
+
         RectF card = new RectF(0, h * 0.54f, w, h);
         p.setShader(new LinearGradient(0, 0, w, 0, Theme.SURFACE_HI, Theme.SURFACE, Shader.TileMode.CLAMP));
         c.drawRoundRect(card, r, r, p);
@@ -117,7 +135,6 @@ final class CalendarRenderer {
             p.setTextSize(15f * u);
             c.drawText(ev.date.format(DateTimeFormatter.ofPattern("EEEE", loc)), textX, mid + 9f * u, p);
 
-            // paging dots
             float dr = 3f * u, step = 19f * u;
             int cur = Math.max(0, Math.min(idx, events.size() - 1));
             for (int i = 0; i < events.size(); i++) {
@@ -134,20 +151,103 @@ final class CalendarRenderer {
             arrow(c, p, w * 0.785f, mid, d, true, u);
             arrow(c, p, w * 0.915f, mid, d, false, u);
         } else {
+            emptyCard(c, p, tileR, textX, mid, u, today, loc, allowed);
+        }
+        return bmp;
+    }
+
+    private static void emptyCard(Canvas c, Paint p, RectF tileR, float textX, float mid, float u, LocalDate today,
+                                  Locale loc, boolean allowed) {
+        p.setTextAlign(Paint.Align.CENTER);
+        p.setColor(Theme.AMBER_LIGHT);
+        p.setTextSize(32f * u);
+        c.drawText(String.format(loc, "%02d", today.getDayOfMonth()), tileR.centerX(), tileR.centerY() + 2f * u, p);
+        p.setColor(Theme.MUTED);
+        p.setTextSize(17f * u);
+        c.drawText(today.format(DateTimeFormatter.ofPattern("MMM", loc)), tileR.centerX(), tileR.centerY() + 25f * u, p);
+        p.setTextAlign(Paint.Align.LEFT);
+        p.setColor(Theme.TEXT);
+        p.setTextSize(20f * u);
+        c.drawText(allowed ? "No upcoming events" : "Calendar access needed", textX, mid - 4f * u, p);
+        p.setColor(Theme.MUTED);
+        p.setTextSize(15f * u);
+        c.drawText(allowed ? "Nothing in the next 120 days" : "Tap to open settings", textX, mid + 20f * u, p);
+    }
+
+    // ------------------------------------------------------------------ list mode (tall widgets)
+
+    private static Bitmap renderList(Context ctx, int w, int h, List<CalendarData.Event> events, boolean allowed) {
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        float u = w / DESIGN_W;
+        float r = 14f * u;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setTypeface(Theme.futura(ctx));
+        LocalDate today = LocalDate.now();
+        Locale loc = Locale.getDefault();
+
+        float topH = 118f * u;
+        drawTop(c, p, new RectF(0, 0, w, topH), u, loc, today);
+
+        float y = topH + 8f * u;
+        float avail = h - y;
+        boolean has = allowed && !events.isEmpty();
+        if (!has) {
+            RectF card = new RectF(0, y, w, y + Math.min(avail, 110f * u));
+            p.setShader(new LinearGradient(0, 0, w, 0, Theme.SURFACE_HI, Theme.SURFACE, Shader.TileMode.CLAMP));
+            c.drawRoundRect(card, r, r, p);
+            p.setShader(null);
+            border(c, card, r, u);
+            float tile = Math.min(card.height() * 0.76f, 90f * u);
+            RectF tileR = new RectF(14f * u, card.centerY() - tile / 2f, 14f * u + tile, card.centerY() + tile / 2f);
+            p.setShader(new LinearGradient(0, tileR.top, 0, tileR.bottom, Theme.PANEL, Theme.DEEP, Shader.TileMode.CLAMP));
+            c.drawRoundRect(tileR, 9f * u, 9f * u, p);
+            p.setShader(null);
+            border(c, tileR, 9f * u, u);
+            emptyCard(c, p, tileR, tileR.right + 18f * u, card.centerY(), u, today, loc, allowed);
+            return bmp;
+        }
+
+        float gap = 7f * u;
+        float rowH = 58f * u;
+        int rows = (int) Math.max(1, Math.min(events.size(), Math.floor((avail + gap) / (rowH + gap))));
+        // spread leftover height over the rows (up to 1.5x) so the widget never looks half empty
+        float spare = (avail + gap) / rows - gap;
+        rowH = Math.min(spare, rowH * 1.5f);
+        for (int i = 0; i < rows; i++) {
+            CalendarData.Event ev = events.get(i);
+            RectF row = new RectF(0, y, w, y + rowH);
+            p.setShader(new LinearGradient(0, 0, w, 0, Theme.SURFACE_HI, Theme.SURFACE, Shader.TileMode.CLAMP));
+            c.drawRoundRect(row, r, r, p);
+            p.setShader(null);
+            border(c, row, r, u);
+
+            float tile = rowH - 14f * u;
+            RectF t = new RectF(8f * u, row.centerY() - tile / 2f, 8f * u + tile, row.centerY() + tile / 2f);
+            p.setShader(new LinearGradient(0, t.top, 0, t.bottom, Theme.PANEL, Theme.DEEP, Shader.TileMode.CLAMP));
+            c.drawRoundRect(t, 8f * u, 8f * u, p);
+            p.setShader(null);
+            border(c, t, 8f * u, u);
             p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(Theme.AMBER_LIGHT);
-            p.setTextSize(32f * u);
-            c.drawText(String.format(loc, "%02d", today.getDayOfMonth()), tileR.centerX(), tileR.centerY() + 2f * u, p);
-            p.setColor(Theme.MUTED);
-            p.setTextSize(17f * u);
-            c.drawText(today.format(DateTimeFormatter.ofPattern("MMM", loc)), tileR.centerX(), tileR.centerY() + 25f * u, p);
-            p.setTextAlign(Paint.Align.LEFT);
             p.setColor(Theme.TEXT);
-            p.setTextSize(20f * u);
-            c.drawText(allowed ? "No upcoming events" : "Calendar access needed", textX, mid - 4f * u, p);
-            p.setColor(Theme.MUTED);
-            p.setTextSize(15f * u);
-            c.drawText(allowed ? "Nothing in the next 120 days" : "Tap to open settings", textX, mid + 20f * u, p);
+            p.setTextSize(Math.min(tile * 0.46f, 26f * u));
+            c.drawText(String.format(loc, "%02d", ev.date.getDayOfMonth()), t.centerX(), t.centerY() + 1f * u, p);
+            p.setColor(Theme.AMBER_LIGHT);
+            p.setTextSize(Math.min(tile * 0.26f, 14f * u));
+            c.drawText(ev.date.format(DateTimeFormatter.ofPattern("MMM", loc)), t.centerX(), t.bottom - 7f * u, p);
+            p.setTextAlign(Paint.Align.LEFT);
+
+            float tx = t.right + 14f * u;
+            float maxW = w - tx - 14f * u;
+            p.setColor(Theme.TEXT);
+            p.setTextSize(19f * u);
+            CharSequence title = android.text.TextUtils.ellipsize(Util.capWords(ev.title), new android.text.TextPaint(p),
+                    maxW, android.text.TextUtils.TruncateAt.END);
+            c.drawText(title.toString(), tx, row.centerY() - 3f * u, p);
+            p.setColor(Theme.TEXT_SOFT);
+            p.setTextSize(14f * u);
+            c.drawText(ev.date.format(DateTimeFormatter.ofPattern("EEEE", loc)), tx, row.centerY() + 16f * u, p);
+            y += rowH + gap;
         }
         return bmp;
     }

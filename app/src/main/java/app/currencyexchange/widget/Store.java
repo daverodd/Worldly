@@ -28,9 +28,6 @@ final class Store {
         double v = Util.parseNum(feeText(c));
         return Double.isNaN(v) ? 2.0 : v;
     }
-    static String home(Context c) { return sp(c).getString("home", ""); }
-    /** SBB clock: IANA zone id typed in settings, empty = device time zone. */
-    static String sbbTz(Context c) { return sp(c).getString("sbbTz", "").trim(); }
     /** SBB clock second hand: "smooth" (about 10 pictures a second), "second" (1 a second) or "minute" (none). */
     static String sbbMode(Context c) { return sp(c).getString("sbbMode", "smooth"); }
     /** Calendar widget: which of the next 5 events is shown. */
@@ -41,13 +38,8 @@ final class Store {
         sp(c).edit().putString("devLat", String.valueOf(lat)).putString("devLon", String.valueOf(lon)).apply();
     }
 
-    /** {lat, lon} for weather + sunrise/sunset: home city if set, else cached device location. */
+    /** {lat, lon} of where you are (last known device location) for weather + sunrise/sunset. */
     static double[] weatherLatLon(Context c) {
-        String home = home(c).trim();
-        if (!home.isEmpty()) {
-            JSONObject g = geo(c, home);
-            if (g != null) return new double[]{g.optDouble("lat", Double.NaN), g.optDouble("lon", Double.NaN)};
-        }
         try {
             String la = sp(c).getString("devLat", null), lo = sp(c).getString("devLon", null);
             if (la != null && lo != null) return new double[]{Double.parseDouble(la), Double.parseDouble(lo)};

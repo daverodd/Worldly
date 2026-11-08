@@ -89,12 +89,12 @@
         </receiver>
 
         <service
-            android:name=".SbbService"
+            android:name=".LiveService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Moves the second hand of the SBB clock widget while the screen is on" />
+                android:value="Keeps the widget clocks and the SBB second hand moving while the screen is on" />
         </service>
 
         <service

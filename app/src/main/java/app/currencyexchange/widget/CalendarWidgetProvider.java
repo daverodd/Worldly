@@ -38,6 +38,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     @Override
     public void onDisabled(Context ctx) {
         Alarms.cancel(ctx, tickIntent(ctx));
+        if (!LiveService.wanted(ctx)) LiveService.stop(ctx);
     }
 
     @Override
@@ -67,6 +68,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             Alarms.at(ctx, Math.min(now + 15L * 60_000L, midnight), tickIntent(ctx));
         } catch (Exception ignored) { }
         try { updateAll(ctx); } catch (Throwable ignored) { }
+        LiveService.ensure(ctx);
     }
 
     static int[] widgetIds(Context ctx) {
@@ -94,21 +96,30 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
         for (int id : ids) {
             Bundle o = awm.getAppWidgetOptions(id);
-            int wdp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300);
-            int hdp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180);
+            boolean land = ctx.getResources().getConfiguration().orientation
+                    == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+            int wdp = o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300);
+            int hdp = o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT : AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180);
             int w = clamp(Math.round(wdp * density), 300, 1100);
-            int h = clamp(Math.round(hdp * density), 180, 800);
+            int h = clamp(Math.round(hdp * density), 180, 1800);
             Bitmap bmp = CalendarRenderer.render(ctx, w, h, events, idx, allowed);
-            RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_calendar);
-            rv.setImageViewBitmap(R.id.img, bmp);
-            rv.setOnClickPendingIntent(R.id.open_top, calendar);
-            rv.setOnClickPendingIntent(R.id.open_card, allowed ? calendar : settings);
-            if (allowed && !events.isEmpty()) {
-                rv.setOnClickPendingIntent(R.id.btn_prev, broadcast(ctx, ACTION_PREV, 22));
-                rv.setOnClickPendingIntent(R.id.btn_next, broadcast(ctx, ACTION_NEXT, 23));
+            RemoteViews rv;
+            if (CalendarRenderer.compact(w, h)) {
+                rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_calendar);
+                rv.setImageViewBitmap(R.id.img, bmp);
+                rv.setOnClickPendingIntent(R.id.open_top, calendar);
+                rv.setOnClickPendingIntent(R.id.open_card, allowed ? calendar : settings);
+                if (allowed && !events.isEmpty()) {
+                    rv.setOnClickPendingIntent(R.id.btn_prev, broadcast(ctx, ACTION_PREV, 22));
+                    rv.setOnClickPendingIntent(R.id.btn_next, broadcast(ctx, ACTION_NEXT, 23));
+                } else {
+                    rv.setOnClickPendingIntent(R.id.btn_prev, settings);
+                    rv.setOnClickPendingIntent(R.id.btn_next, settings);
+                }
             } else {
-                rv.setOnClickPendingIntent(R.id.btn_prev, settings);
-                rv.setOnClickPendingIntent(R.id.btn_next, settings);
+                rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_calendar_list);
+                rv.setImageViewBitmap(R.id.img, bmp);
+                rv.setOnClickPendingIntent(R.id.open_all, allowed ? calendar : settings);
             }
             awm.updateAppWidget(id, rv);
         }

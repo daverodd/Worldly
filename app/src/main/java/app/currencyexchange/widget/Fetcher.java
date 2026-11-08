@@ -31,6 +31,7 @@ final class Fetcher {
     /** @param force true when the user asked for it (Save & refresh): ignores the weather minimum gap */
     static void refreshAll(Context ctx, boolean force) {
         boolean any = false;
+        Locator.refreshFromLastKnown(ctx); // best effort: the system may refuse this while the app is in the background
         String to = Store.to(ctx).trim();
         StringBuilder geoErr = new StringBuilder();
 
@@ -46,14 +47,6 @@ final class Fetcher {
                 }
             } catch (Exception e) {
                 geoErr.append(city).append(": ").append(e.getMessage() == null ? "not found" : e.getMessage()).append("; ");
-            }
-        }
-        String home = Store.home(ctx).trim();
-        if (!home.isEmpty() && Store.geo(ctx, home) == null) {
-            try {
-                geocode(ctx, home);
-            } catch (Exception e) {
-                geoErr.append(home).append(": ").append(e.getMessage() == null ? "not found" : e.getMessage()).append("; ");
             }
         }
         if (geoErr.length() == 0) Store.sp(ctx).edit().remove("geoErr").apply();
@@ -77,7 +70,7 @@ final class Fetcher {
         try {
             double[] ll = Store.weatherLatLon(ctx);
             if (Double.isNaN(ll[0])) {
-                Store.sp(ctx).edit().putString("wxErr", "no location yet (tap 'Use my location' or type a home city)").apply();
+                Store.sp(ctx).edit().putString("wxErr", "no location yet - allow location access in the app").apply();
             } else if (!force && Store.weather(ctx) != null
                     && System.currentTimeMillis() - Store.sp(ctx).getLong("wxTs", 0L) < WEATHER_MIN_GAP_MS) {
                 any = true; // fresh enough

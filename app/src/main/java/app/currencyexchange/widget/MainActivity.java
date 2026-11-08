@@ -2,6 +2,7 @@ package app.currencyexchange.widget;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -12,31 +13,49 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.net.URLEncoder;
 import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.Currency;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
-/** Settings screen, styled like SAB Monitor (graphite cards, amber accent, Jakarta + Mono type). */
+/** Settings screen, styled like SAB Monitor (graphite cards, amber accent). Cities and currencies are picked from lists. */
 public class MainActivity extends Activity {
-    private final EditText[] city = new EditText[4];
-    private final EditText[] from = new EditText[4];
-    private EditText to, fee, home, sbbTz;
+    private final TextView[] cityBtn = new TextView[4];
+    private final TextView[] fromBtn = new TextView[4];
+    private TextView toBtn;
+    private EditText fee;
     private String sbbMode;
     private final TextView[] modeBtn = new TextView[3];
     private static final String[] MODES = {"smooth", "second", "minute"};
     private static final String[] MODE_LABELS = {"Smooth", "Every second", "Minute only"};
-    private TextView banner, calStatus, calButton;
+    private TextView banner, calStatus, calButton, locStatus, locButton;
     private LinearLayout statusBox;
+    private final Handler ui = new Handler(Looper.getMainLooper());
+
+    private static final int REQ_ALL = 1;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -60,45 +79,56 @@ public class MainActivity extends Activity {
         LinearLayout titles = vbox();
         titles.setPadding(dp(12), 0, 0, 0);
         titles.addView(text("Currency Exchange", 19, Theme.uiBold(this), Theme.TEXT));
-        titles.addView(text("World clocks · rates · weather", 12, Theme.uiMedium(this), Theme.MUTED));
+        titles.addView(text("World clocks · rates · SBB clock · calendar", 12, Theme.uiMedium(this), Theme.MUTED));
         head.addView(titles);
         col.addView(head);
 
-        // ---- world clocks ----
+        // ---- world clocks: pick from a list ----
         LinearLayout clocks = card(col, "WORLD CLOCKS");
-        grid(clocks, city, new String[]{Store.city(this, 0), Store.city(this, 1), Store.city(this, 2), Store.city(this, 3)},
-                InputType.TYPE_CLASS_TEXT, false, "City");
+        for (int i = 0; i < 4; i += 2) {
+            LinearLayout row = hbox();
+            for (int j = 0; j < 2; j++) {
+                final int idx = i + j;
+                cityBtn[idx] = picker(Store.city(this, idx), v -> pickCity(idx));
+                addWeighted(row, cityBtn[idx], j == 0 ? 0 : 8);
+            }
+            clocks.addView(row, matchWrap(i == 0 ? 0 : 8));
+        }
+        TextView cityHint = text("Tap a city to choose from the list. Can't find yours? Type its name in the list's search box.",
+                12, Theme.uiMedium(this), Theme.DIM);
+        cityHint.setPadding(dp(2), dp(8), 0, 0);
+        clocks.addView(cityHint);
 
-        // ---- currency rows ----
+        // ---- currency rows: pick from a list ----
         LinearLayout rates = card(col, "CURRENCY ROWS");
-        grid(rates, from, new String[]{Store.from(this, 0), Store.from(this, 1), Store.from(this, 2), Store.from(this, 3)},
-                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS, true, "Code");
+        for (int i = 0; i < 4; i += 2) {
+            LinearLayout row = hbox();
+            for (int j = 0; j < 2; j++) {
+                final int idx = i + j;
+                fromBtn[idx] = picker(currencyLabel(Store.from(this, idx)), v -> pickCurrency("Currency " + (idx + 1), code -> {
+                    Store.sp(this).edit().putString("from" + idx, code).apply();
+                    fromBtn[idx].setText(currencyLabel(code));
+                    refreshNow("Updating rates…");
+                }));
+                addWeighted(row, fromBtn[idx], j == 0 ? 0 : 8);
+            }
+            rates.addView(row, matchWrap(i == 0 ? 0 : 8));
+        }
         LinearLayout conv = hbox();
-        to = input(Store.to(this), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS, true, "Code");
+        toBtn = picker(currencyLabel(Store.to(this)), v -> pickCurrency("Convert to", code -> {
+            Store.sp(this).edit().putString("to", code).apply();
+            toBtn.setText(currencyLabel(code));
+            refreshNow("Updating rates…");
+        }));
         fee = input(Store.feeText(this), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL, true, "Fee");
-        addWeighted(conv, labeled("CONVERT TO", to), 0);
-        addWeighted(conv, labeled("VISA FEE %", fee), 8);
+        addWeighted(conv, labeledView("CONVERT TO", toBtn), 0);
+        addWeighted(conv, labeledView("VISA FEE %", fee), 8);
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         cp.topMargin = dp(12);
         rates.addView(conv, cp);
 
-        // ---- weather location ----
-        LinearLayout wx = card(col, "WEATHER & SUN LOCATION");
-        home = input(Store.home(this), InputType.TYPE_CLASS_TEXT, false, "Home city (optional)");
-        wx.addView(home, matchWrap(0));
-        TextView hint = text("Leave empty to use your device location.", 12, Theme.uiMedium(this), Theme.DIM);
-        hint.setPadding(dp(2), dp(6), 0, dp(10));
-        wx.addView(hint);
-        wx.addView(secondaryButton("Use my location", v -> useLocation()), matchWrap(0));
-
-        // ---- SBB clock ----
-        LinearLayout sbb = card(col, "SBB CLOCK");
-        sbbTz = input(Store.sbbTz(this), InputType.TYPE_CLASS_TEXT, true, "Time zone, e.g. Europe/Zurich (optional)");
-        sbb.addView(sbbTz, matchWrap(0));
-        TextView sbbHint = text("Leave empty to follow your device. Second hand: runs a lap in 58.5 s, waits at 12 and the "
-                + "minute hand steps on the minute, like the real station clock.", 12, Theme.uiMedium(this), Theme.DIM);
-        sbbHint.setPadding(dp(2), dp(6), 0, dp(10));
-        sbb.addView(sbbHint);
+        // ---- SBB clock: only the animation options ----
+        LinearLayout sbb = card(col, "SBB CLOCK ANIMATION");
         sbbMode = Store.sbbMode(this);
         LinearLayout modes = hbox();
         for (int i = 0; i < 3; i++) {
@@ -107,24 +137,35 @@ public class MainActivity extends Activity {
             modeBtn[i].setGravity(Gravity.CENTER);
             modeBtn[i].setPadding(dp(6), dp(11), dp(6), dp(11));
             modeBtn[i].setClickable(true);
-            modeBtn[i].setOnClickListener(v -> { sbbMode = m; paintModes(); });
+            modeBtn[i].setOnClickListener(v -> {
+                sbbMode = m;
+                Store.sp(this).edit().putString("sbbMode", m).apply();
+                paintModes();
+                SbbWidgetProvider.updateAll(getApplicationContext());
+                LiveService.ensure(getApplicationContext());
+            });
             addWeighted(modes, modeBtn[i], i == 0 ? 0 : 8);
         }
         sbb.addView(modes, matchWrap(0));
         paintModes();
-        TextView modeHint = text("Smooth and Every second need a small background service while the screen is on (an "
-                + "ongoing notification appears). Minute only uses no service.", 12, Theme.uiMedium(this), Theme.DIM);
+        TextView modeHint = text("Smooth: second hand runs a lap in 58.5 s and the minute hand swings like the real clock. "
+                + "Every second: one picture a second. Minute only: still picture each minute. The clock always shows the "
+                + "time where you are.", 12, Theme.uiMedium(this), Theme.DIM);
         modeHint.setPadding(dp(2), dp(8), 0, 0);
         sbb.addView(modeHint);
 
-        // ---- calendar ----
-        LinearLayout cal = card(col, "CALENDAR");
+        // ---- permissions ----
+        LinearLayout perms = card(col, "PERMISSIONS");
+        locStatus = text("", 13, Theme.uiSemi(this), Theme.TEXT);
+        perms.addView(locStatus);
+        locButton = secondaryButton("Allow location", v -> requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_ALL));
+        perms.addView(locButton, matchWrap(8));
         calStatus = text("", 13, Theme.uiSemi(this), Theme.TEXT);
-        cal.addView(calStatus);
-        calButton = secondaryButton("Allow calendar access", v ->
-                requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, 2));
-        cal.addView(calButton, matchWrap(10));
-        updateCalendarCard();
+        calStatus.setPadding(0, dp(12), 0, 0);
+        perms.addView(calStatus);
+        calButton = secondaryButton("Allow calendar", v -> requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, REQ_ALL));
+        perms.addView(calButton, matchWrap(8));
+        updatePermissionCards();
 
         // ---- actions ----
         col.addView(primaryButton("Save & refresh", v -> save()), matchWrap(18));
@@ -140,56 +181,96 @@ public class MainActivity extends Activity {
         st.addView(banner);
         statusBox = vbox();
         st.addView(statusBox);
-        TextView foot = text("World clocks update every minute. Rates and weather refresh about every 30 minutes.",
-                12, Theme.uiMedium(this), Theme.DIM);
+        TextView foot = text("Clocks update every minute. Rates and weather refresh about every 30 minutes. A small "
+                + "\"Widgets running\" notification keeps the clocks live while the screen is on; it uses no battery with the "
+                + "screen off and you can hide it in the notification settings.", 12, Theme.uiMedium(this), Theme.DIM);
         foot.setPadding(0, dp(10), 0, 0);
         st.addView(foot);
         updateStatus();
 
         setContentView(sv);
+
+        // First launch: ask for everything the widgets need in one go.
+        if (!Store.sp(this).getBoolean("permAsked", false)) {
+            Store.sp(this).edit().putBoolean("permAsked", true).apply();
+            List<String> need = new ArrayList<>();
+            if (!Locator.allowed(this)) need.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+            if (!CalendarData.allowed(this)) need.add(Manifest.permission.READ_CALENDAR);
+            if (Build.VERSION.SDK_INT >= 33
+                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                need.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+            if (!need.isEmpty()) requestPermissions(need.toArray(new String[0]), REQ_ALL);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updatePermissionCards();
+        Context app = getApplicationContext();
+        if (Locator.allowed(this)) {
+            boolean moved = Locator.refreshFromLastKnown(app);
+            if (Double.isNaN(Store.weatherLatLon(app)[0])) fetchLocation();
+            else if (moved || Store.weather(app) == null) refreshNow(null);
+        }
+        CalendarWidgetProvider.updateAll(app);
+        LiveService.ensure(app); // the app is in front, so Android lets the service start
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
+        super.onRequestPermissionsResult(code, perms, results);
+        updatePermissionCards();
+        Context app = getApplicationContext();
+        CalendarWidgetProvider.updateAll(app);
+        if (Locator.allowed(this)) {
+            if (!Locator.refreshFromLastKnown(app)) fetchLocation();
+            refreshNow("Getting your location…");
+        }
+        LiveService.ensure(app);
     }
 
     // ------------------------------------------------------------------ actions
 
     private void save() {
         SharedPreferences.Editor e = Store.sp(this).edit();
-        for (int i = 0; i < 4; i++) {
-            e.putString("city" + i, city[i].getText().toString().trim());
-            e.putString("from" + i, from[i].getText().toString().trim().toUpperCase(Locale.ROOT));
-        }
-        e.putString("to", to.getText().toString().trim().toUpperCase(Locale.ROOT));
         String feeIn = Util.cleanNum(fee.getText().toString());
         if (!Double.isNaN(Util.parseNum(feeIn))) e.putString("feeTxt", feeIn);
-        e.putString("home", home.getText().toString().trim());
-        String tz = sbbTz.getText().toString().trim();
-        boolean tzOk = true;
-        if (!tz.isEmpty()) {
-            try { java.time.ZoneId.of(tz); } catch (java.time.DateTimeException ex) { tzOk = false; }
-        }
-        e.putString("sbbTz", tzOk ? tz : "");
         e.putString("sbbMode", sbbMode);
         e.apply();
-        if (!tzOk) Toast.makeText(this, "Unknown time zone \"" + tz + "\" - using the device's.", Toast.LENGTH_LONG).show();
-        if (Build.VERSION.SDK_INT >= 33 && !"minute".equals(sbbMode)
-                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 3);
-        }
         refreshNow("Saved. Refreshing…");
     }
 
+    /** Repaint every widget from the cache, then fetch fresh data in the background. msg == null: quiet. */
     private void refreshNow(String msg) {
         final Context app = getApplicationContext();
-        WidgetProvider.updateAll(app); // instant repaint with whatever is cached
+        WidgetProvider.updateAll(app);
         SbbWidgetProvider.updateAll(app);
         CalendarWidgetProvider.updateAll(app);
-        SbbService.ensure(app);
-        banner.setText(msg);
-        banner.setVisibility(View.VISIBLE);
+        LiveService.ensure(app);
+        if (msg != null) {
+            banner.setText(msg);
+            banner.setVisibility(View.VISIBLE);
+        }
         new Thread(() -> {
             Fetcher.refreshAll(app, true);
             WidgetProvider.updateAll(app);
             runOnUiThread(this::updateStatus);
         }).start();
+    }
+
+    private void updatePermissionCards() {
+        boolean loc = Locator.allowed(this);
+        locStatus.setText(loc ? "Location allowed - weather and sunrise/sunset follow where you are."
+                : "Needs location to show weather and sunrise/sunset where you are.");
+        locStatus.setTextColor(loc ? Theme.TEXT : Theme.AMBER);
+        locButton.setVisibility(loc ? View.GONE : View.VISIBLE);
+        boolean cal = CalendarData.allowed(this);
+        calStatus.setText(cal ? "Calendar allowed - the Calendar widget shows your next events."
+                : "Needs calendar access for the Calendar widget. Events never leave your phone.");
+        calStatus.setTextColor(cal ? Theme.TEXT : Theme.AMBER);
+        calButton.setVisibility(cal ? View.GONE : View.VISIBLE);
     }
 
     private void updateStatus() {
@@ -215,69 +296,22 @@ public class MainActivity extends Activity {
 
     // ---- location ----
 
-    private void useLocation() {
-        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-            return;
-        }
-        fetchLocation();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        updateCalendarCard();
-        SbbService.ensure(getApplicationContext()); // the app is in front, so Android lets the service start
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
-        super.onRequestPermissionsResult(code, perms, results);
-        if (code == 2) {
-            updateCalendarCard();
-            CalendarWidgetProvider.updateAll(getApplicationContext());
-            return;
-        }
-        if (code == 3) return; // notification permission: only affects whether the notification is visible
-        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) fetchLocation();
-        else Toast.makeText(this, "Permission denied - type a home city instead.", Toast.LENGTH_LONG).show();
-    }
-
+    @SuppressWarnings("deprecation")
     private void fetchLocation() {
+        if (!Locator.allowed(this)) return;
         LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        Location best = null;
-        try {
-            for (String p : lm.getProviders(true)) {
-                Location l = lm.getLastKnownLocation(p);
-                if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
-            }
-        } catch (SecurityException ignored) { }
-        if (best != null) {
-            saveLocation(best);
-            return;
-        }
         if (Build.VERSION.SDK_INT >= 30) {
             try {
                 String prov = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
                         ? LocationManager.NETWORK_PROVIDER : LocationManager.GPS_PROVIDER;
                 lm.getCurrentLocation(prov, null, getMainExecutor(), loc -> {
-                    if (loc != null) saveLocation(loc);
-                    else toastNoLocation();
+                    if (loc != null) {
+                        Locator.save(this, loc);
+                        refreshNow(null);
+                    }
                 });
-                return;
             } catch (SecurityException | IllegalArgumentException ignored) { }
         }
-        toastNoLocation();
-    }
-
-    private void toastNoLocation() {
-        Toast.makeText(this, "Couldn't get a location. Turn on device location, or type a home city.",
-                Toast.LENGTH_LONG).show();
-    }
-
-    private void saveLocation(Location l) {
-        Store.setDeviceLocation(this, l.getLatitude(), l.getLongitude());
-        refreshNow(String.format(Locale.US, "Location saved (%.2f, %.2f). Refreshing…", l.getLatitude(), l.getLongitude()));
     }
 
     // ---- pin widget ----
@@ -301,12 +335,189 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void updateCalendarCard() {
-        boolean ok = CalendarData.allowed(this);
-        calStatus.setText(ok ? "Calendar access allowed - showing your next 5 events."
-                : "Needs permission to read your calendar. Events never leave your phone.");
-        calStatus.setTextColor(ok ? Theme.TEXT : Theme.AMBER);
-        calButton.setVisibility(ok ? View.GONE : View.VISIBLE);
+    // ------------------------------------------------------------------ pickers
+
+    private interface Pick<T> { void on(T value); }
+
+    private static final class Item {
+        final String title, sub;
+        final Object payload;
+        Item(String title, String sub, Object payload) { this.title = title; this.sub = sub; this.payload = payload; }
+        String hay() { return (title + " " + sub).toLowerCase(Locale.ROOT); }
+    }
+
+    private String currencyLabel(String code) {
+        String c = code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
+        try {
+            return c + "  ·  " + Currency.getInstance(c).getDisplayName(Locale.ENGLISH);
+        } catch (Exception e) {
+            return c;
+        }
+    }
+
+    private void pickCity(final int slot) {
+        List<Item> items = new ArrayList<>();
+        for (CityData.City c : CityData.all(this)) items.add(new Item(c.name, c.country() + "  ·  " + c.tz, c));
+        showPicker("City " + (slot + 1), items, true, p -> {
+            JSONObject geo;
+            String name;
+            if (p.payload instanceof CityData.City) {
+                CityData.City c = (CityData.City) p.payload;
+                name = c.name;
+                geo = c.toGeo();
+            } else {
+                JSONObject o = (JSONObject) p.payload;
+                name = p.title;
+                geo = o;
+            }
+            Store.putGeo(this, name, geo);
+            Store.sp(this).edit().putString("city" + slot, name).apply();
+            cityBtn[slot].setText(name);
+            refreshNow("Updating…");
+        });
+    }
+
+    private void pickCurrency(String title, final Pick<String> done) {
+        List<Item> items = new ArrayList<>();
+        List<Currency> all = new ArrayList<>(Currency.getAvailableCurrencies());
+        java.util.Collections.sort(all, (a, b) -> a.getCurrencyCode().compareTo(b.getCurrencyCode()));
+        for (Currency c : all) {
+            String code = c.getCurrencyCode();
+            if (code.startsWith("X") || code.length() != 3) continue; // metals, test codes, supranational units
+            items.add(new Item(code, c.getDisplayName(Locale.ENGLISH), code));
+        }
+        showPicker(title, items, false, p -> done.on((String) p.payload));
+    }
+
+    /** Searchable list dialog. With {@code remote} the search box can also look cities up online (Open-Meteo, no key). */
+    private void showPicker(String title, final List<Item> base, final boolean remote, final Pick<Item> done) {
+        final Dialog d = new Dialog(this);
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout root = vbox();
+        root.setPadding(dp(14), dp(14), dp(14), dp(10));
+        root.setBackground(Theme.box(this, Theme.PANEL, Theme.BORDER, 18));
+        TextView t = text(title.toUpperCase(Locale.ROOT), 11, Theme.uiBold(this), Theme.MUTED);
+        t.setLetterSpacing(0.1f);
+        t.setPadding(dp(2), 0, 0, dp(8));
+        root.addView(t);
+        final EditText q = input("", InputType.TYPE_CLASS_TEXT, false, remote ? "Search or type any city" : "Search");
+        root.addView(q);
+        final ListView lv = new ListView(this);
+        lv.setDividerHeight(0);
+        lv.setSelector(android.R.color.transparent);
+        final List<Item> shown = new ArrayList<>(base);
+        final BaseAdapter ad = new BaseAdapter() {
+            @Override public int getCount() { return shown.size(); }
+            @Override public Object getItem(int i) { return shown.get(i); }
+            @Override public long getItemId(int i) { return i; }
+            @Override public View getView(int i, View v, ViewGroup parent) {
+                LinearLayout r = vbox();
+                r.setPadding(dp(10), dp(9), dp(10), dp(9));
+                Item it = shown.get(i);
+                r.addView(text(it.title, 15, Theme.uiSemi(MainActivity.this), Theme.TEXT));
+                if (!it.sub.isEmpty()) r.addView(text(it.sub, 12, Theme.uiMedium(MainActivity.this), Theme.MUTED));
+                return r;
+            }
+        };
+        lv.setAdapter(ad);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(380));
+        lp.topMargin = dp(8);
+        root.addView(lv, lp);
+        lv.setOnItemClickListener((parent, view, pos, id) -> {
+            d.dismiss();
+            done.on(shown.get(pos));
+        });
+
+        final Runnable[] pending = new Runnable[1];
+        final List<Item> online = new ArrayList<>();
+        q.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void afterTextChanged(Editable s) {
+                final String f = s.toString().trim().toLowerCase(Locale.ROOT);
+                filter(f);
+                if (pending[0] != null) ui.removeCallbacks(pending[0]);
+                if (remote && f.length() >= 3) {
+                    pending[0] = () -> new Thread(() -> {
+                        List<Item> found = geocodeSearch(f);
+                        ui.post(() -> {
+                            online.clear();
+                            online.addAll(found);
+                            filter(q.getText().toString().trim().toLowerCase(Locale.ROOT));
+                        });
+                    }).start();
+                    ui.postDelayed(pending[0], 450);
+                }
+            }
+
+            private void filter(String f) {
+                shown.clear();
+                for (Item it : base) if (f.isEmpty() || it.hay().contains(f)) shown.add(it);
+                for (Item it : online) {
+                    boolean dup = false;
+                    for (Item s2 : shown) if (s2.title.equalsIgnoreCase(it.title) && s2.sub.equals(it.sub)) { dup = true; break; }
+                    if (!dup && (f.isEmpty() || it.hay().contains(f.substring(0, Math.min(3, f.length()))))) shown.add(it);
+                }
+                ad.notifyDataSetChanged();
+            }
+        });
+
+        d.setContentView(root);
+        if (d.getWindow() != null) {
+            d.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
+            d.getWindow().setLayout(Math.round(getResources().getDisplayMetrics().widthPixels * 0.92f), ViewGroup.LayoutParams.WRAP_CONTENT);
+            d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
+        d.show();
+    }
+
+    /** Open-Meteo geocoding: free, no key. Called from a background thread. */
+    private List<Item> geocodeSearch(String query) {
+        List<Item> out = new ArrayList<>();
+        try {
+            String url = "https://geocoding-api.open-meteo.com/v1/search?name=" + URLEncoder.encode(query, "UTF-8")
+                    + "&count=10&language=en&format=json";
+            JSONObject root = new JSONObject(Net.get(url));
+            JSONArray rs = root.optJSONArray("results");
+            if (rs == null) return out;
+            for (int i = 0; i < rs.length(); i++) {
+                JSONObject r = rs.getJSONObject(i);
+                if (!r.has("timezone")) continue;
+                JSONObject g = new JSONObject();
+                g.put("lat", r.getDouble("latitude"));
+                g.put("lon", r.getDouble("longitude"));
+                g.put("tz", r.getString("timezone"));
+                g.put("cc", r.optString("country_code", ""));
+                String admin = r.optString("admin1", "");
+                String sub = r.optString("country", "") + (admin.isEmpty() ? "" : "  ·  " + admin) + "  ·  " + r.getString("timezone");
+                out.add(new Item(r.getString("name"), sub, g));
+            }
+        } catch (Exception ignored) { }
+        return out;
+    }
+
+    /** Looks like an input but opens a list when tapped. */
+    private TextView picker(String value, View.OnClickListener l) {
+        TextView t = text(value, 14, Theme.uiMedium(this), Theme.TEXT);
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        t.setPadding(dp(12), dp(12), dp(12), dp(12));
+        t.setBackground(Theme.pressable(Theme.box(this, Theme.SURFACE, Theme.BORDER, 12),
+                Theme.box(this, Theme.SURFACE_HI, Theme.AMBER, 12)));
+        t.setCompoundDrawablePadding(dp(6));
+        t.setClickable(true);
+        t.setOnClickListener(l);
+        return t;
+    }
+
+    private LinearLayout labeledView(String label, View v) {
+        LinearLayout l = vbox();
+        TextView t = text(label, 10, Theme.uiBold(this), Theme.DIM);
+        t.setLetterSpacing(0.1f);
+        t.setPadding(dp(2), 0, 0, dp(4));
+        l.addView(t);
+        l.addView(v, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return l;
     }
 
     // ------------------------------------------------------------------ UI building blocks
@@ -372,32 +583,10 @@ public class MainActivity extends Activity {
         return e;
     }
 
-    /** Two inputs per row. */
-    private void grid(LinearLayout card, EditText[] out, String[] values, int type, boolean mono, String hintPrefix) {
-        for (int i = 0; i < out.length; i += 2) {
-            LinearLayout row = hbox();
-            for (int j = 0; j < 2 && i + j < out.length; j++) {
-                out[i + j] = input(values[i + j], type, mono, hintPrefix + " " + (i + j + 1));
-                addWeighted(row, out[i + j], j == 0 ? 0 : 8);
-            }
-            card.addView(row, matchWrap(i == 0 ? 0 : 8));
-        }
-    }
-
     private void addWeighted(LinearLayout row, View v, int leftMarginDp) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         lp.leftMargin = dp(leftMarginDp);
         row.addView(v, lp);
-    }
-
-    private LinearLayout labeled(String label, EditText e) {
-        LinearLayout l = vbox();
-        TextView t = text(label, 10, Theme.uiBold(this), Theme.DIM);
-        t.setLetterSpacing(0.1f);
-        t.setPadding(dp(2), 0, 0, dp(4));
-        l.addView(t);
-        l.addView(e, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        return l;
     }
 
     /** SAB's active-tab look: orange gradient, white bold text. */
