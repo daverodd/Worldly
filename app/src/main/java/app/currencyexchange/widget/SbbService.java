@@ -142,12 +142,17 @@ public class SbbService extends Service {
             try {
                 long now = System.currentTimeMillis();
                 ZoneId zone = SbbWidgetProvider.zone(ctx);
-                buf = SbbRenderer.render(now, zone, SbbRenderer.SIZE, buf);
+                // the elastic swing of the minute hand is only shown in smooth mode; other modes keep it settled
+                boolean smooth = "smooth".equals(Store.sbbMode(ctx));
+                buf = SbbRenderer.render(now, zone, SbbRenderer.SIZE, buf, smooth);
                 SbbWidgetProvider.pushFrame(ctx, ids, buf);
             } catch (Throwable ignored) { }
             long now = System.currentTimeMillis();
             boolean smooth = "smooth".equals(Store.sbbMode(ctx));
-            long next = smooth ? (now / 100L + 1) * 100L + 5L : (now / 1000L + 1) * 1000L + 20L;
+            long msIn = Math.floorMod(now, 60_000L);
+            // faster frames while the minute hand is swinging (its wobble has a 0.3 s period)
+            long step = SbbClock.easing(msIn) ? 33L : 100L;
+            long next = smooth ? (now / step + 1) * step + 3L : (now / 1000L + 1) * 1000L + 20L;
             handler.postDelayed(this, Math.max(15L, next - now));
         }
     };

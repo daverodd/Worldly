@@ -71,7 +71,7 @@ public class SbbWidgetProvider extends AppWidgetProvider {
     static void updateAll(Context ctx) {
         int[] ids = widgetIds(ctx);
         if (ids.length == 0) return;
-        Bitmap bmp = SbbRenderer.render(System.currentTimeMillis(), zone(ctx), SbbRenderer.SIZE, null);
+        Bitmap bmp = SbbRenderer.render(System.currentTimeMillis(), zone(ctx), SbbRenderer.SIZE, null, false);
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget);
         rv.setImageViewBitmap(R.id.img, bmp);
         PendingIntent open = PendingIntent.getActivity(ctx, 10, new Intent(ctx, MainActivity.class),

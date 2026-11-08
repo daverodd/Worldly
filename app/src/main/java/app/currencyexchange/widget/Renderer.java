@@ -31,6 +31,9 @@ final class Renderer {
     static final int W = 750, H = 730;
     static final float S = 1.4f;
     private static final float R = 16f; // card corner radius (SAB uses rounded-2xl)
+    private static final float INSET = 20f;        // left padding inside a row = right padding
+    private static final float RIGHT = W - INSET;  // right edge of the numbers
+    private static final float COL = 520f;         // left edge shared by the "Market" label and the Visa logo
 
     static Bitmap render(Context ctx) {
         Bitmap bmp = Bitmap.createBitmap(Math.round(W * S), Math.round(H * S), Bitmap.Config.ARGB_8888);
@@ -62,14 +65,14 @@ final class Renderer {
             set = Util.hm(t[1]);
         }
 
-        Typeface ui = Theme.uiMedium(ctx), mono = Theme.monoSemi(ctx), emoji = Typeface.DEFAULT;
+        Typeface ui = Theme.uiMedium(ctx), mono = Theme.monoSemi(ctx);
         Seg sep = new Seg("  |  ", ui, Theme.DIM);
-        // 💧 = droplet, 🌄 = sunrise, 🌇 = sunset
+        // Line icons in the app's amber (drawn, not emoji) so they match the rest of the widget.
         segments(c, W / 2f, 32, 26,
                 new Seg("Feels like ", ui, Theme.MUTED), new Seg(feels + "°C", mono, Theme.TEXT), sep,
-                new Seg("💧 ", emoji, Theme.TEXT), new Seg(hum + "%", mono, Theme.TEXT), sep,
-                new Seg("🌄 ", emoji, Theme.TEXT), new Seg(rise, mono, Theme.TEXT), sep,
-                new Seg("🌇 ", emoji, Theme.TEXT), new Seg(set, mono, Theme.TEXT));
+                Seg.icon(ICON_DROP), new Seg(hum + "%", mono, Theme.TEXT), sep,
+                Seg.icon(ICON_SUNRISE), new Seg(rise, mono, Theme.TEXT), sep,
+                Seg.icon(ICON_SUNSET), new Seg(set, mono, Theme.TEXT));
     }
 
     // ------------------------------------------------------------------ world clocks
@@ -158,34 +161,31 @@ final class Renderer {
         Typeface codeTf = Theme.uiMedium(ctx), labelTf = Theme.uiMedium(ctx), numTf = Theme.monoSemi(ctx); // regular weight, like the original
         String from = Store.from(ctx, i).trim().toUpperCase(Locale.ROOT);
 
-        drawFlagOrLabel(ctx, c, Util.countryOfCurrency(from), new RectF(55, cy - 30, 125, cy + 30), codeTf);
-        text(c, from, 140, cy, 34, Paint.Align.LEFT, codeTf, Theme.TEXT, false);
+        drawFlagOrLabel(ctx, c, Util.countryOfCurrency(from), new RectF(INSET, cy - 30, INSET + 70, cy + 30), codeTf);
+        text(c, from, INSET + 85, cy, 34, Paint.Align.LEFT, codeTf, Theme.TEXT, false);
 
         // amber arrow (SAB's accent)
         Path arrow = new Path();
-        arrow.moveTo(219, cy - 13);
-        arrow.lineTo(219, cy + 13);
-        arrow.lineTo(238, cy);
+        arrow.moveTo(184, cy - 13);
+        arrow.lineTo(184, cy + 13);
+        arrow.lineTo(203, cy);
         arrow.close();
         Paint ap = new Paint(Paint.ANTI_ALIAS_FLAG);
         ap.setColor(Theme.AMBER);
         c.drawPath(arrow, ap);
 
-        drawFlagOrLabel(ctx, c, Util.countryOfCurrency(to), new RectF(255, cy - 30, 325, cy + 30), codeTf);
-        text(c, to, 340, cy, 34, Paint.Align.LEFT, codeTf, Theme.TEXT, false);
+        drawFlagOrLabel(ctx, c, Util.countryOfCurrency(to), new RectF(222, cy - 30, 292, cy + 30), codeTf);
+        text(c, to, 307, cy, 34, Paint.Align.LEFT, codeTf, Theme.TEXT, false);
 
         // "Market" label (muted) + value (mono, white), right-aligned
         double market = Store.rate(ctx, from, to);
         String mv = Util.fmt0(market);
-        Paint mp = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mp.setTypeface(numTf);
-        mp.setTextSize(32);
-        float mw = mp.measureText(mv);
-        text(c, mv, 730, y + 29, 32, Paint.Align.RIGHT, numTf, Theme.TEXT, false);
-        text(c, "Market", 730 - mw - 12, y + 29, 26, Paint.Align.RIGHT, labelTf, Theme.MUTED, false);
+        text(c, mv, RIGHT, y + 32, 32, Paint.Align.RIGHT, numTf, Theme.TEXT, false);
+        // label starts exactly where the Visa logo below starts (same left edge)
+        text(c, "Market", COL, y + 32, 24, Paint.Align.LEFT, labelTf, Theme.MUTED, false);
 
         // Visa line: logo + rate (incl. configured fee)
-        RectF logo = new RectF(560, y + 56, 620, y + 96);
+        RectF logo = new RectF(COL, y + 58, COL + 60, y + 98);
         Bitmap vb = Flags.visa(ctx);
         if (vb != null) {
             drawCover(c, vb, logo, 6);
@@ -199,11 +199,11 @@ final class Renderer {
         double visa = Util.alignToMarket(Store.visa(ctx, from, to), market);
         Typeface visaTf = Theme.monoMedium(ctx);
         if (!Double.isNaN(visa)) {
-            text(c, Util.fmt0(visa), 730, y + 76, 28, Paint.Align.RIGHT, visaTf, Theme.TEXT_SOFT, false);
+            text(c, Util.fmt0(visa), RIGHT, y + 78, 28, Paint.Align.RIGHT, visaTf, Theme.TEXT_SOFT, false);
         } else if (!Double.isNaN(market)) {
             // Visa did not answer: estimate = market rate + the fee, marked with "~" and muted
             double est = market * (1.0 + Store.fee(ctx) / 100.0);
-            text(c, "~" + Util.fmt0(est), 730, y + 76, 28, Paint.Align.RIGHT, visaTf, Theme.MUTED, false);
+            text(c, "~" + Util.fmt0(est), RIGHT, y + 78, 28, Paint.Align.RIGHT, visaTf, Theme.MUTED, false);
         }
     }
 
@@ -261,16 +261,69 @@ final class Renderer {
         c.drawText(s, x, y, p);
     }
 
+    static final int ICON_DROP = 1, ICON_SUNRISE = 2, ICON_SUNSET = 3;
+
     private static final class Seg {
         final String s;
         final Typeface tf;
         final int color;
+        final int icon; // 0 = text segment
 
         Seg(String s, Typeface tf, int color) {
             this.s = s;
             this.tf = tf;
             this.color = color;
+            this.icon = 0;
         }
+
+        private Seg(int icon) {
+            this.s = "";
+            this.tf = Typeface.DEFAULT;
+            this.color = Theme.AMBER_LIGHT;
+            this.icon = icon;
+        }
+
+        static Seg icon(int kind) { return new Seg(kind); }
+    }
+
+    /** Icon cell width in layout units (icon + gap to the text that follows). */
+    private static float iconCell(float size) { return size * 1.25f; }
+
+    /** Amber outline icon centred on (cx, cy), about `s` units tall. */
+    private static void icon(Canvas c, int kind, float cx, float cy, float s) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(s * 0.09f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+        p.setColor(Theme.AMBER_LIGHT);
+        c.save();
+        c.translate(cx, cy);
+        c.scale(s, s);
+        p.setStrokeWidth(0.09f);
+        Path path = new Path();
+        if (kind == ICON_DROP) {
+            path.moveTo(0, -0.5f);
+            path.cubicTo(0.26f, -0.2f, 0.36f, 0f, 0.36f, 0.14f);
+            path.arcTo(new RectF(-0.36f, -0.22f, 0.36f, 0.5f), 0, 180, false);
+            path.cubicTo(-0.36f, 0f, -0.26f, -0.2f, 0, -0.5f);
+            path.close();
+        } else {
+            boolean up = kind == ICON_SUNRISE;
+            path.moveTo(-0.5f, 0.36f);               // horizon
+            path.lineTo(0.5f, 0.36f);
+            path.moveTo(-0.26f, 0.36f);              // half sun
+            path.arcTo(new RectF(-0.26f, 0.10f, 0.26f, 0.62f), 180, 180, false);
+            path.moveTo(0, -0.46f);                  // arrow shaft
+            path.lineTo(0, -0.02f);
+            if (up) {
+                path.moveTo(-0.15f, -0.31f); path.lineTo(0, -0.46f); path.lineTo(0.15f, -0.31f);
+            } else {
+                path.moveTo(-0.15f, -0.17f); path.lineTo(0, -0.02f); path.lineTo(0.15f, -0.17f);
+            }
+        }
+        c.drawPath(path, p);
+        c.restore();
     }
 
     /** One centered line made of differently styled pieces (muted label + white number, etc.). */
@@ -282,16 +335,20 @@ final class Renderer {
         float total = 0;
         for (int i = 0; i < segs.length; i++) {
             p.setTypeface(segs[i].tf);
-            w[i] = p.measureText(segs[i].s);
+            w[i] = segs[i].icon != 0 ? iconCell(size) : p.measureText(segs[i].s);
             total += w[i];
         }
         p.setTypeface(segs[0].tf);
         float y = cy - (p.ascent() + p.descent()) / 2f;
         float x = cx - total / 2f;
         for (int i = 0; i < segs.length; i++) {
-            p.setTypeface(segs[i].tf);
-            p.setColor(segs[i].color);
-            c.drawText(segs[i].s, x, y, p);
+            if (segs[i].icon != 0) {
+                icon(c, segs[i].icon, x + size * 0.5f, cy, size * 1.05f);
+            } else {
+                p.setTypeface(segs[i].tf);
+                p.setColor(segs[i].color);
+                c.drawText(segs[i].s, x, y, p);
+            }
             x += w[i];
         }
     }
