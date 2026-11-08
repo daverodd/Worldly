@@ -132,12 +132,12 @@ final class Fetcher {
 
     /**
      * Same endpoint as the KWGT preset (fromCurr=TARGET, toCurr=SOURCE), same parameters (fee=2 and a
-     * MM/dd/yyyy date with raw slashes), plus browser-like headers, a second Visa domain and a walk back
+     * MM/dd/yyyy date with raw slashes) and a plain request with no browser headers, plus a walk back
      * through older dates (Visa publishes with a delay and not on weekends). The last error is stored so
      * the settings screen can show it. Returns NaN when Visa does not answer; the widget then shows an estimate.
      */
     private static double visaRate(Context ctx, String from, String to) {
-        String[] hosts = {"https://www.visa.com.au", "https://usa.visa.com"};
+        String[] hosts = {"https://www.visa.com.au"}; // the same host as the original KWGT formula
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
         String fee = Store.feeText(ctx);
         String err = "no response";
@@ -151,7 +151,7 @@ final class Fetcher {
                             + "&exchangedate=" + d
                             + "&fromCurr=" + to.toUpperCase(Locale.ROOT)
                             + "&toCurr=" + from.toUpperCase(Locale.ROOT);
-                    String body = Net.get(url, host + "/support/consumer/travel-support/exchange-rate-calculator.html");
+                    String body = Net.getPlain(url); // plain request, no browser disguise (that is what KWGT sends)
                     JSONObject o = new JSONObject(body).optJSONObject("originalValues");
                     if (o == null) {
                         retryOlder = true;

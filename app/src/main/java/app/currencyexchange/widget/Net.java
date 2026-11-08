@@ -15,27 +15,33 @@ final class Net {
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36";
 
     static String get(String url) throws IOException {
-        return new String(getBytes(url), StandardCharsets.UTF_8);
-    }
-
-    /** GET that also sends a Referer (some sites, e.g. Visa, reject requests without one). */
-    static String get(String url, String referer) throws IOException {
-        return new String(getBytes(url, referer), StandardCharsets.UTF_8);
+        return new String(fetch(url, null, false), StandardCharsets.UTF_8);
     }
 
     static byte[] getBytes(String url) throws IOException {
-        return getBytes(url, null);
+        return fetch(url, null, false);
     }
 
-    static byte[] getBytes(String url, String referer) throws IOException {
+    /**
+     * Plain request with the platform's default headers and nothing else, the same kind of request the
+     * original KWGT formula made. Used for Visa, which answered KWGT but refused requests that claimed
+     * to be a browser.
+     */
+    static String getPlain(String url) throws IOException {
+        return new String(fetch(url, null, true), StandardCharsets.UTF_8);
+    }
+
+    private static byte[] fetch(String url, String referer, boolean plain) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         try {
             c.setConnectTimeout(8000);
             c.setReadTimeout(10000);
-            c.setRequestProperty("User-Agent", UA);
-            c.setRequestProperty("Accept", "application/json, image/png, */*");
-            c.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
-            if (referer != null) c.setRequestProperty("Referer", referer);
+            if (!plain) {
+                c.setRequestProperty("User-Agent", UA);
+                c.setRequestProperty("Accept", "application/json, image/png, */*");
+                c.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+                if (referer != null) c.setRequestProperty("Referer", referer);
+            }
             int code = c.getResponseCode();
             if (code < 200 || code >= 300) throw new IOException("HTTP " + code + " for " + url);
             try (InputStream in = c.getInputStream()) {
