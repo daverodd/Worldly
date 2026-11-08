@@ -59,6 +59,12 @@ public class WidgetProvider extends AppWidgetProvider {
     /** Called when the app opens: (re)starts the per-minute alarm chain right away. */
     static void kick(Context ctx) { tick(ctx, "app"); }
 
+    /** If the minute chain has stopped (its next alarm is overdue), restart it. Called from other widgets' alarms and jobs. */
+    static void heal(Context ctx) {
+        long next = Store.sp(ctx).getLong("clockNextAt", 0);
+        if (System.currentTimeMillis() - next > 90_000L) tick(ctx, "restart");
+    }
+
     private static void tick(Context ctx) { tick(ctx, "alarm"); }
 
     private static void tick(Context ctx, String who) {
@@ -122,7 +128,7 @@ public class WidgetProvider extends AppWidgetProvider {
 
     private static void scheduleNextTick(Context ctx) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-        long next = (System.currentTimeMillis() / 60_000L + 1) * 60_000L + 500L; // just after the minute turns
+        long next = (System.currentTimeMillis() / 60_000L + 1) * 60_000L + 100L; // right as the minute turns
         PendingIntent pi = tickIntent(ctx);
         String how;
         try {

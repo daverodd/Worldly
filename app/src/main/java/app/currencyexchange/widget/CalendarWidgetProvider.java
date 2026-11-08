@@ -53,6 +53,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     static void tick(Context ctx) {
+        try { WidgetProvider.heal(ctx); } catch (Throwable ignored) { }
         if (widgetIds(ctx).length == 0) return;
         try {
             long now = System.currentTimeMillis();

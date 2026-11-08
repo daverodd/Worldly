@@ -45,6 +45,7 @@ public class SbbWidgetProvider extends AppWidgetProvider {
     }
 
     static void tick(Context ctx) {
+        try { WidgetProvider.heal(ctx); } catch (Throwable ignored) { }
         if (widgetIds(ctx).length == 0) return;
         try { // arm the next minute step first so a drawing failure can never break the chain
             Alarms.at(ctx, (System.currentTimeMillis() / 60_000L + 1) * 60_000L + 150L, tickIntent(ctx));

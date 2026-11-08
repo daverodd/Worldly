@@ -13,6 +13,8 @@ public class RefreshJobService extends JobService {
             try {
                 Fetcher.refreshAll(ctx);
                 WidgetProvider.updateAll(ctx);
+                WidgetProvider.heal(ctx);
+            } catch (Throwable ignored) {
             } finally {
                 jobFinished(params, false);
             }
