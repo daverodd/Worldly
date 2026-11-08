@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
 
         // ---- world clocks: pick from a list ----
         LinearLayout clocks = card(col, "WORLD CLOCKS");
-        for (int i = 0; i < 6; i += 2) {
+        for (int i = 0; i < 4; i += 2) {
             LinearLayout row = hbox();
             for (int j = 0; j < 2; j++) {
                 final int idx = i + j;
